@@ -18,7 +18,7 @@ for y in range(4,768,8): #get center vertical pixel of each block
         j += 1 #next row
         if (j*16) not in position_rgb.keys():
             position_rgb[j*16] = list() #add new pair of position and pixel list which stores w/b
-    for x in range(4, 1024, 8): #get center horizontal pixel of each block 
+    for x in range(4,1024,8): #get center horizontal pixel of each block 
         if (x-4) % 64 == 0 and x!=4: #check if it is next character in the next column or not; each char contains 64px width
             i += 1 #next column
             if (i + (j*16)) not in position_rgb.keys():
@@ -34,3 +34,4 @@ for (k,v) in position_rgb.items():
     f.writelines(str(chr(k+32))+':'+"\n")
     for i in range(0,128,8):
         f.writelines("".join(v[i:i+8])+"\n")
+f.close()
