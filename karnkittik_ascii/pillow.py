@@ -1,7 +1,7 @@
 from PIL import Image
 img = "karnkittik_ascii/IMG_2514.JPG"
 img = Image.open(img);
-f = open("karnkittik_ascii/myfile2.txt", "w")
+f = open("karnkittik_ascii/undertale_pillow.txt", "w")
 for y in range(0,img.height,8):
     count = ""
     for x in range(0,img.width,8):
