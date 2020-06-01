@@ -21,7 +21,9 @@
 
 
 module ball #(
-    IX_DIR = 1, // horizontal direction: 1 is right, 0 is left
+    X_ENABLE = 0, // x-axis movement: 0 is disable, 1 is enable
+    Y_ENABLE = 0, // y-axis movement: 0 is disable, 1 is enable
+    IX_DIR = 0, // horizontal direction: 1 is right, 0 is left
     IY_DIR = 0, // vertical direction: 1 is right, 0 is left
     F_WIDTH = 150, // width of fighting box
     F_HEIGHT = 150, // height of fighting box
@@ -31,7 +33,8 @@ module ball #(
     D_HEIGHT = 480, // height of display
     R = 5, // initial radius of ball
     C_X = 5, // initial x center of ball
-    C_Y = 5 // initial y center of ball
+    C_Y = 5, // initial y center of ball
+    VELOCITY = 1 // initial velocity
     )
     (
     input wire i_clk, // base clock
@@ -39,7 +42,8 @@ module ball #(
     input wire i_animate, // animate when input is high
     output wire [15:0] o_cx,
     output wire [15:0] o_cy,
-    output wire [15:0] o_r
+    output wire [15:0] o_r,
+    output wire [15:0] led
     );
     
     reg [15:0] x = C_X+FX;
@@ -51,17 +55,47 @@ module ball #(
     assign o_cy = y;
     assign o_r = R;
     
+    // debug
+    reg [15:0] counter = 0;
+    assign led = counter;
+    
     always @(posedge i_clk)
     begin
         if(i_animate && i_ani_stb)
         begin
-            x <= (x_dir)? x+1:x-1;
-            y <= (y_dir)? y+1:y-1;
+
+            if(X_ENABLE) 
+            begin
+                x <= x_dir? x+1:x-1;
+                counter = counter+1;
+            end
+            if(Y_ENABLE)
+            begin
+                y <= y_dir? y+1:y-1;
+            end
             
-            if(x < FX+R) x_dir <= 1; // left edge->change direction to right
-            if(x > FX+F_WIDTH-R) x_dir <= 0; // right edge->change direction to left
-            if(y < FY+R) y_dir <= 1; // top edge->change direction to down
-            if(y > FY+F_HEIGHT-R) y_dir <= 0; // bottom edge->change direction to up
+            if(x < FX+R) 
+            begin
+                x_dir <= 1; // left edge->change direction to right
+                x <= FX+R;
+            end
+            if(x > FX+F_WIDTH-R) 
+            begin
+                x_dir <= 0; // right edge->change direction to left
+                x <= FX+F_WIDTH-R;
+            end
+            if(y < FY+R) 
+            begin
+                y_dir <= 1; // top edge->change direction to down
+                y <= FY+R;
+            end
+            if(y > FY+F_HEIGHT-R) 
+            begin
+                y_dir <= 0; // bottom edge->change direction to up
+                y <= FY+F_HEIGHT-R;
+            end
+            
+            
             
         end
     end

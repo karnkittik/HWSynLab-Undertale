@@ -22,34 +22,29 @@
 
 module vgaSystem(
     output [15:0] led,
-    
     output [6:0] seg,
     output dp,
     output [3:0] an,
-    
     output [3:0] vgaRed,
     output [3:0] vgaBlue,
     output [3:0] vgaGreen,
     output Hsync,
     output Vsync,
-    
     output RsTx,
-    
     //input [15:0] sw,
-    
     //input btnC,
     //input btnU,
     //input btnL,
     //input btnR,
     //input btnD,
-    
     input RsRx,
-    
     input clk
 );
     
     parameter WIDTH = 640;
     parameter HEIGHT = 480;
+    parameter FX = 245; // coordinate x of fighting box
+    parameter FY = 230; // coordinate y of fighting box
     
 //    wire vga_clk;
 //    clock_divider clock_divider_vga(vga_clk, clk, 2);
@@ -101,23 +96,48 @@ module vgaSystem(
         .clk(clk)
     );
     
-    wire [15:0] circle_x;
-    wire [15:0] circle_y;
-    wire [15:0] radius;
+    wire [15:0] ball_a_x;
+    wire [15:0] ball_a_y;
+    wire [15:0] ball_b_x;
+    wire [15:0] ball_b_y;
+    wire [15:0] ball_a_radius;
+    wire [15:0] ball_b_radius;
     wire [11:0] color;
     
-    ball #(.R(5)) ball_a(
+    // debug
+    wire [15:0] counter;
+    
+    ball #(.R(10), .X_ENABLE(1), .Y_ENABLE(0), .C_X(10), .C_Y(20) ) ball_a(
         .i_clk(clk),
         .i_ani_stb(pix_stb),
         .i_animate(animate),
-        .o_cx(circle_x),
-        .o_cy(circle_y),
-        .o_r(radius)
+        .o_cx(ball_a_x),
+        .o_cy(ball_a_y),
+        .o_r(ball_a_radius),
+        .led(counter)
     );
     
-    assign {vgaRed, vgaGreen, vgaBlue} = 
-        (vga_x - circle_x) * (vga_x - circle_x) + (vga_y - circle_y) * (vga_y - circle_y) <= radius*radius ?
-        12'hfff : 12'h000;
+//    ball #(.R(5), .IX_DIR(0), .IY_DIR(1), .VELOCITY(3), .C_X(20), .C_Y(5) ) ball_b(
+//        .i_clk(clk),
+//        .i_ani_stb(pix_stb),
+//        .i_animate(animate),
+//        .o_cx(ball_b_x),
+//        .o_cy(ball_b_y),
+//        .o_r(ball_b_radius)
+//    );
+    
+    wire b_a, b_b;
+    
+    assign b_a = 
+        ((vga_x - ball_a_x) * (vga_x - ball_a_x) + (vga_y - ball_a_y) * (vga_y - ball_a_y) <= ball_a_radius*ball_a_radius) ? 1 : 0;
+//    assign b_b = 
+//        (vga_x - ball_b_x) * (vga_x - ball_b_x) + (vga_y - ball_b_y) * (vga_y - ball_b_y) <= ball_b_radius*ball_a_radius ? 1 : 0;
+        
+    assign vgaRed[3:0] = {b_a, b_a, b_a, b_a};
+    assign vgaGreen[3:0] = {b_a, b_a, b_a, b_a};
+    assign vgaBlue[3:0] = {b_a, b_a, b_a, b_a};
+    
+    assign led = counter;
     
 //    initial
 //    begin
