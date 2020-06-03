@@ -137,29 +137,29 @@ module vgaSystem(
         (sq_b_b_x + sq_b_b_y <= sq_r_b) ? 4'b1111 : 4'b0000;
 
     //heart
-    wire [15:0] heart_x;
-    wire [15:0] heart_y;
-    wire [15:0] h_x;
-    wire [15:0] h_y;
-    wire [15:0] h_radius;
-    heart #(.R(10), .X_ENABLE(1), .Y_ENABLE(1), .VELOCITY(2), .C_X(75), .C_Y(75)) Heart(
-        .i_clk(clk),
-        .i_ani_stb(pix_stb),
-        .i_animate(animate),
-        .i_rx_receive(rx_receive),
-        .i_rx_data(rx_data),
-        .o_cx(h_x),
-        .o_cy(h_y),
-        .o_r(h_radius),
-        .o_tx_transmit(tx_transmit),
-        .o_tx_data(tx_data)
-    );
-    wire [3:0] heart;
-    wire [20:0] sq_h_x = (vga_x - h_x) * (vga_x - h_x);
-    wire [20:0] sq_h_y = (vga_y - h_y) * (vga_y - h_y);
-    wire [20:0] sq_h_r = h_radius * h_radius;
-    assign heart = 
-        (sq_h_x + sq_h_y <= sq_h_r) ? 4'b1111 : 4'b0000;
+    // wire [15:0] heart_x;
+    // wire [15:0] heart_y;
+    // wire [15:0] h_x;
+    // wire [15:0] h_y;
+    // wire [15:0] h_radius;
+    // heart #(.R(10), .X_ENABLE(1), .Y_ENABLE(1), .VELOCITY(2), .C_X(75), .C_Y(75)) Heart(
+    //     .i_clk(clk),
+    //     .i_ani_stb(pix_stb),
+    //     .i_animate(animate),
+    //     .i_rx_receive(rx_receive),
+    //     .i_rx_data(rx_data),
+    //     .o_cx(h_x),
+    //     .o_cy(h_y),
+    //     .o_r(h_radius),
+    //     .o_tx_transmit(tx_transmit),
+    //     .o_tx_data(tx_data)
+    // );
+    // wire [3:0] heart;
+    // wire [20:0] sq_h_x = (vga_x - h_x) * (vga_x - h_x);
+    // wire [20:0] sq_h_y = (vga_y - h_y) * (vga_y - h_y);
+    // wire [20:0] sq_h_r = h_radius * h_radius;
+    // assign heart = 
+    //     (sq_h_x + sq_h_y <= sq_h_r) ? 4'b1111 : 4'b0000;
 
      //player bar
     wire [14:0] player_total_hp = 16'd300;
@@ -254,20 +254,24 @@ module vgaSystem(
     wire [15:0] movingBar_y;
     wire [15:0] movingBar_radius;
     wire [15:0] movingBar_height;
-    movingbar #(.R(2), .X_ENABLE(1), .VELOCITY(10), .I_X(15)) Moving_Bar(
+    movingbar #(.R(2), .X_ENABLE(1), .VELOCITY(5), .I_X(15)) Moving_Bar(
         .i_clk(clk),
         .i_ani_stb(pix_stb),
         .i_animate(animate),
+        .i_rx_receive(rx_receive),
+        .i_rx_data(rx_data),
         .o_cx(movingBar_x),
         .o_cy(movingBar_y),
         .o_r(movingBar_radius),
-        .o_h(movingBar_height)
+        .o_h(movingBar_height),
+        .o_tx_transmit(tx_transmit),
+        .o_tx_data(tx_data)
     );
     wire [3:0] movingBar;
     assign movingBar = 
         ((vga_x >= movingBar_x - movingBar_radius)
         & (vga_x <= movingBar_x + movingBar_radius)
-        & (vga_y >= movingBar_y) & (vga_y <= movingBar_y + 150)) ? 4'b1111 : 4'b0000;
+        & (vga_y >= movingBar_y) & (vga_y <= movingBar_y + 150)) ? 4'b0111 : 4'b0000;
     // RGB
     assign vgaRed[3:0] = 
         frameFight 
