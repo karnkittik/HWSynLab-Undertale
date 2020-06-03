@@ -66,12 +66,11 @@ module ball #(
 
             if(X_ENABLE) 
             begin
-                x <= x_dir? x+1:x-1;
-                counter = counter+1;
+                x <= x_dir? x+VELOCITY:x-VELOCITY;
             end
             if(Y_ENABLE)
             begin
-                y <= y_dir? y+1:y-1;
+                y <= y_dir? y+VELOCITY:y-VELOCITY;
             end
             
             if(x < FX+R) 
@@ -94,8 +93,6 @@ module ball #(
                 y_dir <= 0; // bottom edge->change direction to up
                 y <= FY+F_HEIGHT-R;
             end
-            
-            
             
         end
     end

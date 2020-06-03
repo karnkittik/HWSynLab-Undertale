@@ -32,14 +32,14 @@ module vga_controller(
     input clk
 );
 
-    parameter H_PW      = 96;
-    parameter H_BP      = 48;
-    parameter H_DISP    = 640;
-    parameter H_FP      = 16;
-    parameter V_PW      = 2;
-    parameter V_BP      = 33;
-    parameter V_DISP    = 480;
-    parameter V_FP      = 10;
+    parameter HS_STA = 16;              // horizontal sync start
+    parameter HS_END = 16 + 96;         // horizontal sync end
+    parameter HA_STA = 16 + 96 + 48;    // horizontal active pixel start
+    parameter VS_STA = 480 + 10;        // vertical sync start
+    parameter VS_END = 480 + 10 + 2;    // vertical sync end
+    parameter VA_END = 480;             // vertical active pixel end
+    parameter LINE   = 800;             // complete line (pixels)
+    parameter SCREEN = 525;             // complete screen (lines)
     
     reg [15:0] h_count;
     reg [15:0] v_count;
@@ -50,28 +50,28 @@ module vga_controller(
         v_count = 0;
     end
     
-    assign animate = ((v_count == V_DISP-1)&(h_count == H_PW+H_BP+H_DISP+H_FP));
+    assign h_sync = ~((h_count >= HS_STA) & (h_count < HS_END));
+    assign v_sync = ~((v_count >= VS_STA) & (v_count < VS_END));
     
-    assign h_sync = h_count >= H_PW;
-    assign v_sync = v_count >= V_PW;
+    assign x = (h_count < HA_STA) ? 0 : (h_count - HA_STA);
+    assign y = (v_count >= VA_END) ? (VA_END - 1) : (v_count);
     
-    assign x = h_count >= H_PW + H_BP && h_count < H_PW + H_BP + H_DISP ? h_count - H_PW - H_BP : 0;
-    assign y = v_count >= V_PW + V_BP && v_count < V_PW + V_BP + V_DISP ? v_count - V_PW - V_BP : 0;
-    
-    assign end_of_line = (h_count == H_PW + H_BP + H_DISP + H_FP - 1);
-    assign end_of_frame = (v_count == V_PW + V_BP + V_DISP + V_FP - 1);
+    assign animate = ((v_count == VA_END - 1) & (h_count == LINE));
     
     always @(posedge clk)
     begin
         if(i_pix_stb)
         begin
-            if (h_count < H_FP + H_PW + H_BP + H_DISP - 1) h_count = h_count + 1;
-            else
+            if (h_count == LINE)  // end of line
             begin
-                h_count = 0;
-                if (v_count < V_DISP + V_FP + V_PW + V_BP - 1) v_count = v_count + 1;
-                else v_count = 0;
+                h_count <= 0;
+                v_count <= v_count + 1;
             end
+            else 
+                h_count <= h_count + 1;
+
+            if (v_count == SCREEN)  // end of screen
+                v_count <= 0;
         end    
     end
     

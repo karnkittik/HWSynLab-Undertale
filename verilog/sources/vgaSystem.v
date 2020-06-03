@@ -31,13 +31,13 @@ module vgaSystem(
     output Hsync,
     output Vsync,
     output RsTx,
+    input RsRx,
     //input [15:0] sw,
     //input btnC,
     //input btnU,
     //input btnL,
     //input btnR,
     //input btnD,
-    input RsRx,
     input clk
 );
     
@@ -45,6 +45,8 @@ module vgaSystem(
     parameter HEIGHT = 480;
     parameter FX = 245; // coordinate x of fighting box
     parameter FY = 230; // coordinate y of fighting box
+    parameter F_WIDTH = 150; // width of fighting box
+    parameter F_HEIGHT = 150; // height of fighting box
     
 //    wire vga_clk;
 //    clock_divider clock_divider_vga(vga_clk, clk, 2);
@@ -73,8 +75,8 @@ module vgaSystem(
     );
     
     wire tx_idle;
-    reg [7:0] tx_data;
-    reg tx_transmit;
+    wire [7:0] tx_data;
+    wire tx_transmit;
     uart_transmitter uart_transmitter
     (
         .tx(RsTx),
@@ -98,123 +100,96 @@ module vgaSystem(
     
     wire [15:0] ball_a_x;
     wire [15:0] ball_a_y;
+    wire [15:0] ball_a_radius;
+    
     wire [15:0] ball_b_x;
     wire [15:0] ball_b_y;
-    wire [15:0] ball_a_radius;
     wire [15:0] ball_b_radius;
-    wire [11:0] color;
+    
+    wire [15:0] ball_c_x;
+    wire [15:0] ball_c_y;
+    wire [15:0] ball_c_radius;
+    
+    wire [15:0] heart_x;
+    wire [15:0] heart_y;
+    wire [15:0] h_x;
+    wire [15:0] h_y;
+    wire [15:0] h_radius;
+//    wire [11:0] color;
     
     // debug
     wire [15:0] counter;
     
-    ball #(.R(10), .X_ENABLE(1), .Y_ENABLE(0), .C_X(10), .C_Y(20) ) ball_a(
+    ball #(.R(5), .X_ENABLE(1), .Y_ENABLE(0), .VELOCITY(2), .C_X(10), .C_Y(20) ) ball_a(
         .i_clk(clk),
         .i_ani_stb(pix_stb),
         .i_animate(animate),
         .o_cx(ball_a_x),
         .o_cy(ball_a_y),
-        .o_r(ball_a_radius),
+        .o_r(ball_a_radius)
+//        .led(counter)
+    );
+    
+    ball #(.R(5), .X_ENABLE(0), .Y_ENABLE(1), .VELOCITY(3), .C_X(20), .C_Y(10) ) ball_b(
+        .i_clk(clk),
+        .i_ani_stb(pix_stb),
+        .i_animate(animate),
+        .o_cx(ball_b_x),
+        .o_cy(ball_b_y),
+        .o_r(ball_b_radius)
+//        .led(counter)
+    );
+    
+    heart #(.R(5), .X_ENABLE(1), .Y_ENABLE(1), .VELOCITY(2), .C_X(75), .C_Y(75)) Heart(
+        .i_clk(clk),
+        .i_ani_stb(pix_stb),
+        .i_animate(animate),
+        .i_rx_receive(rx_receive),
+        .i_rx_data(rx_data),
+        .o_cx(h_x),
+        .o_cy(h_y),
+        .o_r(h_radius),
+        .o_tx_transmit(tx_transmit),
+        .o_tx_data(tx_data),
         .led(counter)
     );
     
-//    ball #(.R(5), .IX_DIR(0), .IY_DIR(1), .VELOCITY(3), .C_X(20), .C_Y(5) ) ball_b(
-//        .i_clk(clk),
-//        .i_ani_stb(pix_stb),
-//        .i_animate(animate),
-//        .o_cx(ball_b_x),
-//        .o_cy(ball_b_y),
-//        .o_r(ball_b_radius)
-//    );
-    
-    wire b_a, b_b;
+    wire [3:0] b_a;
+    wire [3:0] b_b;
+    wire [3:0] heart;
+    // ball a
+    wire [63:0] sq_b_a_x = (vga_x - ball_a_x) * (vga_x - ball_a_x);
+    wire [63:0] sq_b_a_y = (vga_y - ball_a_y) * (vga_y - ball_a_y);
+    wire [63:0] sq_r_a = ball_a_radius * ball_a_radius;
+    // ball b
+    wire [63:0] sq_b_b_x = (vga_x - ball_b_x) * (vga_x - ball_b_x);
+    wire [63:0] sq_b_b_y = (vga_y - ball_b_y) * (vga_y - ball_b_y);
+    wire [63:0] sq_r_b = ball_b_radius * ball_b_radius;
+    // heart
+    wire [63:0] sq_h_x = (vga_x - h_x) * (vga_x - h_x);
+    wire [63:0] sq_h_y = (vga_y - h_y) * (vga_y - h_y);
+    wire [63:0] sq_h_r = h_radius * h_radius;
+    // heart equation BUT dose not work
+//    wire [31:0] sq_h_x = (vga_x - h_x) * (vga_x - h_x);
+//    wire [31:0] sq_h_y = (vga_y - h_y) * (vga_y - h_y);
+//    wire [127:0] cu_h_y = (vga_y - h_y) * (vga_y - h_y) * (vga_y - h_y);
+//    wire [31:0] sq_h_r = h_radius * h_radius;
+//    wire [127:0] cu_h_t1 = (sq_h_x + sq_h_y - sq_h_r) * (sq_h_x + sq_h_y - sq_h_r) * (sq_h_x + sq_h_y - sq_h_r);
+//    wire [127:0] cu_h_t2 = sq_h_x * cu_h_y;
     
     assign b_a = 
-        ((vga_x - ball_a_x) * (vga_x - ball_a_x) + (vga_y - ball_a_y) * (vga_y - ball_a_y) <= ball_a_radius*ball_a_radius) ? 1 : 0;
-//    assign b_b = 
-//        (vga_x - ball_b_x) * (vga_x - ball_b_x) + (vga_y - ball_b_y) * (vga_y - ball_b_y) <= ball_b_radius*ball_a_radius ? 1 : 0;
+        (sq_b_a_x + sq_b_a_y <= sq_r_a) ? 4'b1111 : 4'b0000;
+    assign b_b = 
+        (sq_b_b_x + sq_b_b_y <= sq_r_b) ? 4'b1111 : 4'b0000;
+    assign heart = 
+        (sq_h_x + sq_h_y <= sq_h_r) ? 4'b1111 : 4'b0000;
+//    assign heart = 
+//        (cu_h_t1 <= cu_h_t2) ? 4'b1111 : 4'b0000;
         
-    assign vgaRed[3:0] = {b_a, b_a, b_a, b_a};
-    assign vgaGreen[3:0] = {b_a, b_a, b_a, b_a};
-    assign vgaBlue[3:0] = {b_a, b_a, b_a, b_a};
+    assign vgaRed[3:0] = b_a | b_b | heart;
+    assign vgaGreen[3:0] = b_a | b_b;
+    assign vgaBlue[3:0] = b_a | b_b;
     
     assign led = counter;
-    
-//    initial
-//    begin
-//        circle_x = WIDTH / 2;
-//        circle_y = HEIGHT / 2;
-//        color = 12'hfff;
-//    end
-    
-//    always @(posedge clk)
-//    begin
-//        if (rx_receive == 1)
-//        begin
-//            case (rx_data)
-//                8'h77 : begin
-//                    circle_y = circle_y - 1;
-//                    tx_data = 8'h57;
-//                    tx_transmit = 1;
-//                end
-//                8'h61 : begin
-//                    circle_x = circle_x - 1;
-//                    tx_data = 8'h41;
-//                    tx_transmit = 1;
-//                end
-//                8'h73 : begin
-//                    circle_y = circle_y + 1;
-//                    tx_data = 8'h53;
-//                    tx_transmit = 1;
-//                end
-//                8'h64 : begin
-//                    circle_x = circle_x + 1;
-//                    tx_data = 8'h44;
-//                    tx_transmit = 1;
-//                end
-//                8'h63 : begin
-//                    color = 12'h0ff;
-//                    tx_data = 8'h43;
-//                    tx_transmit = 1;
-//                end
-//                8'h6d : begin
-//                    color = 12'hf0f;
-//                    tx_data = 8'h4d;
-//                    tx_transmit = 1;
-//                end
-//                8'h79 : begin
-//                    color = 12'hff0;
-//                    tx_data = 8'h59;
-//                    tx_transmit = 1;
-//                end
-//                8'h20 : begin
-//                    color = 12'hfff;
-//                    tx_data = 8'h5A;
-//                    tx_transmit = 1;
-//                end
-//            endcase
-//        end
-//        else tx_transmit = 0;
-        
-//    end
-
-    // debug
-
-//    wire seg_clk;
-//    clock_divider clock_divider_seg(seg_clk, clk, 50000);
-    
-//    wire [3:0] num;
-//    wire dot;
-//    wire [3:0] dgt;
-//    reg [3:0] num0, num1, num2;
-//    seven_segment_controller ssc(num, dot, dgt, color[3:0], color[7:4], color[11:8], 0, 0, 0, 0, 0, 7, seg_clk);
-    
-//    wire [6:0] dec;
-//    binary_to_seven_segment bin_to_seg(dec, num);
-    
-//    assign seg = ~dec;
-//    assign dp = ~dot;
-//    assign an = ~dgt;
-    
-//    assign led = {circle_y[7:0], circle_x[7:0]};
     
 endmodule
