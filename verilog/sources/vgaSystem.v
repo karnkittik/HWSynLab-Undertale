@@ -140,7 +140,7 @@ module vgaSystem(
 //        .led(counter)
     );
     
-    heart #(.R(5), .X_ENABLE(1), .Y_ENABLE(1), .VELOCITY(2), .C_X(75), .C_Y(75)) Heart(
+    heart #(.R(10), .X_ENABLE(1), .Y_ENABLE(1), .VELOCITY(2), .C_X(75), .C_Y(75)) Heart(
         .i_clk(clk),
         .i_ani_stb(pix_stb),
         .i_animate(animate),
@@ -157,18 +157,20 @@ module vgaSystem(
     wire [3:0] b_a;
     wire [3:0] b_b;
     wire [3:0] heart;
+    wire [3:0] frame;
     // ball a
-    wire [63:0] sq_b_a_x = (vga_x - ball_a_x) * (vga_x - ball_a_x);
-    wire [63:0] sq_b_a_y = (vga_y - ball_a_y) * (vga_y - ball_a_y);
-    wire [63:0] sq_r_a = ball_a_radius * ball_a_radius;
+    wire [20:0] sq_b_a_x = (vga_x - ball_a_x) * (vga_x - ball_a_x);
+    wire [20:0] sq_b_a_y = (vga_y - ball_a_y) * (vga_y - ball_a_y);
+    wire [20:0] sq_r_a = ball_a_radius * ball_a_radius;
     // ball b
-    wire [63:0] sq_b_b_x = (vga_x - ball_b_x) * (vga_x - ball_b_x);
-    wire [63:0] sq_b_b_y = (vga_y - ball_b_y) * (vga_y - ball_b_y);
-    wire [63:0] sq_r_b = ball_b_radius * ball_b_radius;
+    wire [20:0] sq_b_b_x = (vga_x - ball_b_x) * (vga_x - ball_b_x);
+    wire [20:0] sq_b_b_y = (vga_y - ball_b_y) * (vga_y - ball_b_y);
+    wire [20:0] sq_r_b = ball_b_radius * ball_b_radius;
     // heart
-    wire [63:0] sq_h_x = (vga_x - h_x) * (vga_x - h_x);
-    wire [63:0] sq_h_y = (vga_y - h_y) * (vga_y - h_y);
-    wire [63:0] sq_h_r = h_radius * h_radius;
+    wire [20:0] sq_h_x = (vga_x - h_x) * (vga_x - h_x);
+    wire [20:0] sq_h_y = (vga_y - h_y) * (vga_y - h_y);
+    wire [20:0] sq_h_r = h_radius * h_radius;
+   
     // heart equation BUT dose not work
 //    wire [31:0] sq_h_x = (vga_x - h_x) * (vga_x - h_x);
 //    wire [31:0] sq_h_y = (vga_y - h_y) * (vga_y - h_y);
@@ -176,7 +178,7 @@ module vgaSystem(
 //    wire [31:0] sq_h_r = h_radius * h_radius;
 //    wire [127:0] cu_h_t1 = (sq_h_x + sq_h_y - sq_h_r) * (sq_h_x + sq_h_y - sq_h_r) * (sq_h_x + sq_h_y - sq_h_r);
 //    wire [127:0] cu_h_t2 = sq_h_x * cu_h_y;
-    
+    wire [3:0] offset = 5;
     assign b_a = 
         (sq_b_a_x + sq_b_a_y <= sq_r_a) ? 4'b1111 : 4'b0000;
     assign b_b = 
@@ -185,11 +187,14 @@ module vgaSystem(
         (sq_h_x + sq_h_y <= sq_h_r) ? 4'b1111 : 4'b0000;
 //    assign heart = 
 //        (cu_h_t1 <= cu_h_t2) ? 4'b1111 : 4'b0000;
-        
-    assign vgaRed[3:0] = b_a | b_b | heart;
-    assign vgaGreen[3:0] = b_a | b_b;
-    assign vgaBlue[3:0] = b_a | b_b;
-    
+    assign frame =
+       ((vga_x <= 245 + 150 + offset)&(vga_x >= 245 - offset)
+       &(vga_y <= 230 + 150 + offset)&(vga_y >= 230 - offset))&
+       (~((vga_x <= 245 + 150 )&(vga_x >= 245)
+       &(vga_y <= 230 + 150)&(vga_y >= 230))) ? 4'b1111 : 4'b0000;
+    assign vgaRed[3:0] = b_a | b_b | heart |frame ;
+    assign vgaGreen[3:0] = b_a | b_b | frame;
+    assign vgaBlue[3:0] = b_a | b_b | frame;
     assign led = counter;
     
 endmodule
