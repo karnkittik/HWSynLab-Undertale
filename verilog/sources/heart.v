@@ -42,7 +42,6 @@ module heart #(
     output wire [15:0] o_cx,
     output wire [15:0] o_cy,
     output wire [15:0] o_r,
-    output wire [15:0] led,
     output reg o_tx_transmit,
     output reg [7:0] o_tx_data
     );

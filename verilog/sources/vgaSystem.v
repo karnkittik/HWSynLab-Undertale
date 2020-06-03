@@ -150,9 +150,52 @@ module vgaSystem(
         .o_cy(h_y),
         .o_r(h_radius),
         .o_tx_transmit(tx_transmit),
-        .o_tx_data(tx_data),
-        .led(counter)
+        .o_tx_data(tx_data)
     );
+     //player bar
+    wire [14:0] player_total_hp = 16'd300;
+    wire [15:0] player_remain_hp = 16'd150;
+    wire [15:0] lt_x_player_hp_bar;
+    wire [15:0] lt_y_player_hp_bar;
+    wire [15:0] br_x_player_hp_bar;
+    wire [15:0] br_y_player_hp_bar;
+    wire [15:0] player_hp_bar_width;
+    wire [15:0] player_hp_bar_height;
+    hpbar #(.FX(50), .FY(400), .F_HEIGHT(12), .F_WIDTH(400)) Player_hp_bar(
+    .i_clk(clk),
+    .i_total_hp(player_total_hp),
+    .i_remain_hp(player_remain_hp),
+    .o_lt_x(lt_x_player_hp_bar),
+    .o_lt_y(lt_y_player_hp_bar),
+    .o_br_x(br_x_player_hp_bar),
+    .o_br_y(br_y_player_hp_bar)
+    );
+    wire [3:0] player_hp_bar;
+    assign player_hp_bar =
+        ((vga_x>=lt_x_player_hp_bar) & (vga_x<=br_x_player_hp_bar) 
+        & (vga_y>=lt_y_player_hp_bar) & (vga_y<=br_y_player_hp_bar)) ? 4'b1111 : 4'b0000;
+    //monster bar
+    wire [14:0] monster_total_hp = 16'd500;
+    wire [15:0] monster_remain_hp = 16'd200;
+    wire [15:0] lt_x_monster_hp_bar;
+    wire [15:0] lt_y_monster_hp_bar;
+    wire [15:0] br_x_monster_hp_bar;
+    wire [15:0] br_y_monster_hp_bar;
+    wire [15:0] monster_hp_bar_width;
+    wire [15:0] monster_hp_bar_height;
+    hpbar #(.FX(50), .FY(420), .F_HEIGHT(8), .F_WIDTH(250)) Monster_hp_bar(
+    .i_clk(clk),
+    .i_total_hp(monster_total_hp),
+    .i_remain_hp(monster_remain_hp),
+    .o_lt_x(lt_x_monster_hp_bar),
+    .o_lt_y(lt_y_monster_hp_bar),
+    .o_br_x(br_x_monster_hp_bar),
+    .o_br_y(br_y_monster_hp_bar)
+    );
+    wire [3:0] monster_hp_bar;
+    assign monster_hp_bar =
+        ((vga_x>=lt_x_monster_hp_bar) & (vga_x<=br_x_monster_hp_bar) 
+        & (vga_y>=lt_y_monster_hp_bar) & (vga_y<=br_y_monster_hp_bar)) ? 4'b1111 : 4'b0000;
     
     wire [3:0] b_a;
     wire [3:0] b_b;
@@ -192,8 +235,9 @@ module vgaSystem(
        &(vga_y <= 230 + 150 + offset)&(vga_y >= 230 - offset))&
        (~((vga_x <= 245 + 150 )&(vga_x >= 245)
        &(vga_y <= 230 + 150)&(vga_y >= 230))) ? 4'b1111 : 4'b0000;
-    assign vgaRed[3:0] = b_a | b_b | heart |frame ;
-    assign vgaGreen[3:0] = b_a | b_b | frame;
+
+    assign vgaRed[3:0] = b_a | b_b | heart |frame | monster_hp_bar;
+    assign vgaGreen[3:0] = b_a | b_b | frame | player_hp_bar;
     assign vgaBlue[3:0] = b_a | b_b | frame;
     assign led = counter;
     
