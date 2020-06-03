@@ -65,12 +65,12 @@ module heart #(
 //            counter = counter + 1;
             case (i_rx_data)
                 8'h77: begin // w key; to top
-                    if(y-VELOCITY >= FY-R) y <= y-VELOCITY;
+                    if(y-VELOCITY >= FY+R) y <= y-VELOCITY;
                     o_tx_transmit = 1;
                     o_tx_data = 8'h77;
                 end
                 8'h61: begin // a key; to left
-                    if(x-VELOCITY >= FX-R) x <= x-VELOCITY;
+                    if(x-VELOCITY >= FX+R) x <= x-VELOCITY;
                     o_tx_transmit = 1;
                     o_tx_data = 8'h61;
                 end
