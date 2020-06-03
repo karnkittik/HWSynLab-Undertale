@@ -98,28 +98,10 @@ module vgaSystem(
         .clk(clk)
     );
     
+    // ball a
     wire [15:0] ball_a_x;
     wire [15:0] ball_a_y;
     wire [15:0] ball_a_radius;
-    
-    wire [15:0] ball_b_x;
-    wire [15:0] ball_b_y;
-    wire [15:0] ball_b_radius;
-    
-    wire [15:0] ball_c_x;
-    wire [15:0] ball_c_y;
-    wire [15:0] ball_c_radius;
-    
-    wire [15:0] heart_x;
-    wire [15:0] heart_y;
-    wire [15:0] h_x;
-    wire [15:0] h_y;
-    wire [15:0] h_radius;
-//    wire [11:0] color;
-    
-    // debug
-    wire [15:0] counter;
-    
     ball #(.R(5), .X_ENABLE(1), .Y_ENABLE(0), .VELOCITY(2), .C_X(10), .C_Y(20) ) ball_a(
         .i_clk(clk),
         .i_ani_stb(pix_stb),
@@ -127,9 +109,18 @@ module vgaSystem(
         .o_cx(ball_a_x),
         .o_cy(ball_a_y),
         .o_r(ball_a_radius)
-//        .led(counter)
     );
-    
+    wire [3:0] b_a;
+    wire [20:0] sq_b_a_x = (vga_x - ball_a_x) * (vga_x - ball_a_x);
+    wire [20:0] sq_b_a_y = (vga_y - ball_a_y) * (vga_y - ball_a_y);
+    wire [20:0] sq_r_a = ball_a_radius * ball_a_radius;
+    assign b_a = 
+        (sq_b_a_x + sq_b_a_y <= sq_r_a) ? 4'b1111 : 4'b0000;
+
+    // ball b
+    wire [15:0] ball_b_x;
+    wire [15:0] ball_b_y;
+    wire [15:0] ball_b_radius;
     ball #(.R(5), .X_ENABLE(0), .Y_ENABLE(1), .VELOCITY(3), .C_X(20), .C_Y(10) ) ball_b(
         .i_clk(clk),
         .i_ani_stb(pix_stb),
@@ -137,9 +128,20 @@ module vgaSystem(
         .o_cx(ball_b_x),
         .o_cy(ball_b_y),
         .o_r(ball_b_radius)
-//        .led(counter)
     );
-    
+    wire [3:0] b_b;
+    wire [20:0] sq_b_b_x = (vga_x - ball_b_x) * (vga_x - ball_b_x);
+    wire [20:0] sq_b_b_y = (vga_y - ball_b_y) * (vga_y - ball_b_y);
+    wire [20:0] sq_r_b = ball_b_radius * ball_b_radius;
+    assign b_b = 
+        (sq_b_b_x + sq_b_b_y <= sq_r_b) ? 4'b1111 : 4'b0000;
+
+    //heart
+    wire [15:0] heart_x;
+    wire [15:0] heart_y;
+    wire [15:0] h_x;
+    wire [15:0] h_y;
+    wire [15:0] h_radius;
     heart #(.R(10), .X_ENABLE(1), .Y_ENABLE(1), .VELOCITY(2), .C_X(75), .C_Y(75)) Heart(
         .i_clk(clk),
         .i_ani_stb(pix_stb),
@@ -152,6 +154,13 @@ module vgaSystem(
         .o_tx_transmit(tx_transmit),
         .o_tx_data(tx_data)
     );
+    wire [3:0] heart;
+    wire [20:0] sq_h_x = (vga_x - h_x) * (vga_x - h_x);
+    wire [20:0] sq_h_y = (vga_y - h_y) * (vga_y - h_y);
+    wire [20:0] sq_h_r = h_radius * h_radius;
+    assign heart = 
+        (sq_h_x + sq_h_y <= sq_h_r) ? 4'b1111 : 4'b0000;
+
      //player bar
     wire [14:0] player_total_hp = 16'd300;
     wire [15:0] player_remain_hp = 16'd150;
@@ -174,6 +183,7 @@ module vgaSystem(
     assign player_hp_bar =
         ((vga_x>=lt_x_player_hp_bar) & (vga_x<=br_x_player_hp_bar) 
         & (vga_y>=lt_y_player_hp_bar) & (vga_y<=br_y_player_hp_bar)) ? 4'b1111 : 4'b0000;
+
     //monster bar
     wire [14:0] monster_total_hp = 16'd500;
     wire [15:0] monster_remain_hp = 16'd200;
@@ -197,22 +207,83 @@ module vgaSystem(
         ((vga_x>=lt_x_monster_hp_bar) & (vga_x<=br_x_monster_hp_bar) 
         & (vga_y>=lt_y_monster_hp_bar) & (vga_y<=br_y_monster_hp_bar)) ? 4'b1111 : 4'b0000;
     
-    wire [3:0] b_a;
-    wire [3:0] b_b;
-    wire [3:0] heart;
-    wire [3:0] frame;
-    // ball a
-    wire [20:0] sq_b_a_x = (vga_x - ball_a_x) * (vga_x - ball_a_x);
-    wire [20:0] sq_b_a_y = (vga_y - ball_a_y) * (vga_y - ball_a_y);
-    wire [20:0] sq_r_a = ball_a_radius * ball_a_radius;
-    // ball b
-    wire [20:0] sq_b_b_x = (vga_x - ball_b_x) * (vga_x - ball_b_x);
-    wire [20:0] sq_b_b_y = (vga_y - ball_b_y) * (vga_y - ball_b_y);
-    wire [20:0] sq_r_b = ball_b_radius * ball_b_radius;
-    // heart
-    wire [20:0] sq_h_x = (vga_x - h_x) * (vga_x - h_x);
-    wire [20:0] sq_h_y = (vga_y - h_y) * (vga_y - h_y);
-    wire [20:0] sq_h_r = h_radius * h_radius;
+    // escape frame
+    wire [3:0] offsetEscape = 5;
+    wire [3:0] frameEscape;
+    assign frameEscape =
+       ((vga_x <= 245 + 150 + offsetEscape)&(vga_x >= 245 - offsetEscape)
+       &(vga_y <= 230 + 150 + offsetEscape)&(vga_y >= 230 - offsetEscape))&
+       (~((vga_x <= 245 + 150 )&(vga_x >= 245)
+       &(vga_y <= 230 + 150)&(vga_y >= 230))) ? 4'b1111 : 4'b0000;
+    
+    // fight frame
+    wire [3:0] offsetFight = 5;
+    wire [3:0] frameFight;
+    assign frameFight =
+       ((vga_x <= 100 + 440 + offsetFight)&(vga_x >= 100 - offsetFight)
+       &(vga_y <= 230 + 150 + offsetFight)&(vga_y >= 230 - offsetFight))&
+       (~((vga_x <= 100 + 440 )&(vga_x >= 100)
+       &(vga_y <= 230 + 150)&(vga_y >= 230))) ? 4'b1111 : 4'b0000;
+
+    // score bar
+    wire [3:0] scoreBarGreen;
+    assign scoreBarGreen = 
+        ((vga_x >= 305) & (vga_x <= 305 + 20) 
+        & (vga_y >= 230) & (vga_y <= 230 + 150)) ? 4'b1111 : 4'b0000;
+    wire [3:0] scoreBarYellow;
+    assign scoreBarYellow = 
+        (((vga_x >= 220) & (vga_x <= 220 + 15) 
+        & (vga_y >= 240) & (vga_y <= 240 + 130)) |
+        ((vga_x >= 395) & (vga_x <= 395 + 15) 
+        & (vga_y >= 240) & (vga_y <= 240 + 130))) ? 4'b1111 : 4'b0000;
+    wire [3:0] scoreBarOrange;
+    assign scoreBarOrange = 
+        (((vga_x >= 160) & (vga_x <= 160 + 15) 
+        & (vga_y >= 260) & (vga_y <= 260 + 90)) |
+        ((vga_x >= 455) & (vga_x <= 455 + 15) 
+        & (vga_y >= 260) & (vga_y <= 260 + 90))) ? 4'b1111 : 4'b0000;
+    wire [3:0] scoreBarBlue;
+    assign scoreBarBlue = 
+        (((vga_x >= 115) & (vga_x <= 115 + 15) 
+        & (vga_y >= 290) & (vga_y <= 290 + 30)) |
+        ((vga_x >= 500) & (vga_x <= 500 + 15) 
+        & (vga_y >= 290) & (vga_y <= 290 + 30))) ? 4'b1111 : 4'b0000;
+  
+    // moving bar
+    wire [15:0] movingBar_x;
+    wire [15:0] movingBar_y;
+    wire [15:0] movingBar_radius;
+    wire [15:0] movingBar_height;
+    movingbar #(.R(2), .X_ENABLE(1), .VELOCITY(10), .I_X(15)) Moving_Bar(
+        .i_clk(clk),
+        .i_ani_stb(pix_stb),
+        .i_animate(animate),
+        .o_cx(movingBar_x),
+        .o_cy(movingBar_y),
+        .o_r(movingBar_radius),
+        .o_h(movingBar_height)
+    );
+    wire [3:0] movingBar;
+    assign movingBar = 
+        ((vga_x >= movingBar_x - movingBar_radius)
+        & (vga_x <= movingBar_x + movingBar_radius)
+        & (vga_y >= movingBar_y) & (vga_y <= movingBar_y + 150)) ? 4'b1111 : 4'b0000;
+    // RGB
+    assign vgaRed[3:0] = 
+        frameFight 
+        | scoreBarYellow 
+        | scoreBarOrange
+        | (scoreBarBlue & 4'b1000)
+        | movingBar;//b_a | b_b | heart |frame | monster_hp_bar;
+    assign vgaGreen[3:0] =
+        frameFight 
+        | scoreBarYellow 
+        | scoreBarGreen 
+        | (scoreBarOrange & 4'b1010)
+        | (scoreBarBlue & 4'b1100); //b_a | b_b | frame | player_hp_bar;
+    assign vgaBlue[3:0] = 
+        frameFight
+        | (scoreBarBlue & 4'b1111); //b_a | b_b | frame;
    
     // heart equation BUT dose not work
 //    wire [31:0] sq_h_x = (vga_x - h_x) * (vga_x - h_x);
@@ -220,25 +291,9 @@ module vgaSystem(
 //    wire [127:0] cu_h_y = (vga_y - h_y) * (vga_y - h_y) * (vga_y - h_y);
 //    wire [31:0] sq_h_r = h_radius * h_radius;
 //    wire [127:0] cu_h_t1 = (sq_h_x + sq_h_y - sq_h_r) * (sq_h_x + sq_h_y - sq_h_r) * (sq_h_x + sq_h_y - sq_h_r);
-//    wire [127:0] cu_h_t2 = sq_h_x * cu_h_y;
-    wire [3:0] offset = 5;
-    assign b_a = 
-        (sq_b_a_x + sq_b_a_y <= sq_r_a) ? 4'b1111 : 4'b0000;
-    assign b_b = 
-        (sq_b_b_x + sq_b_b_y <= sq_r_b) ? 4'b1111 : 4'b0000;
-    assign heart = 
-        (sq_h_x + sq_h_y <= sq_h_r) ? 4'b1111 : 4'b0000;
+//    wire [127:0] cu_h_t2 = sq_h_x * cu_h_y;   
 //    assign heart = 
 //        (cu_h_t1 <= cu_h_t2) ? 4'b1111 : 4'b0000;
-    assign frame =
-       ((vga_x <= 245 + 150 + offset)&(vga_x >= 245 - offset)
-       &(vga_y <= 230 + 150 + offset)&(vga_y >= 230 - offset))&
-       (~((vga_x <= 245 + 150 )&(vga_x >= 245)
-       &(vga_y <= 230 + 150)&(vga_y >= 230))) ? 4'b1111 : 4'b0000;
-
-    assign vgaRed[3:0] = b_a | b_b | heart |frame | monster_hp_bar;
-    assign vgaGreen[3:0] = b_a | b_b | frame | player_hp_bar;
-    assign vgaBlue[3:0] = b_a | b_b | frame;
-    assign led = counter;
+    // assign led = counter;
     
 endmodule
