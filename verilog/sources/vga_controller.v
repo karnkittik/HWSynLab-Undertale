@@ -28,6 +28,7 @@ module vga_controller(
     output end_of_line,
     output end_of_frame,
     output animate,
+    output active,
     input i_pix_stb,
     input clk
 );
@@ -40,7 +41,7 @@ module vga_controller(
     parameter VA_END = 480;             // vertical active pixel end
     parameter LINE   = 800;             // complete line (pixels)
     parameter SCREEN = 525;             // complete screen (lines)
-    
+    parameter VACTIVESTART = 10 + 2 + 33;
     reg [15:0] h_count;
     reg [15:0] v_count;
     
@@ -55,7 +56,7 @@ module vga_controller(
     
     assign x = (h_count < HA_STA) ? 0 : (h_count - HA_STA);
     assign y = (v_count >= VA_END) ? (VA_END - 1) : (v_count);
-    
+    assign active = ~((h_count< HA_STA) | (v_count < VACTIVESTART));
     assign animate = ((v_count == VA_END - 1) & (h_count == LINE));
     
     always @(posedge clk)

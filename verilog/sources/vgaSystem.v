@@ -25,9 +25,9 @@ module vgaSystem(
     output [6:0] seg,
     output dp,
     output [3:0] an,
-    output [3:0] vgaRed,
-    output [3:0] vgaBlue,
-    output [3:0] vgaGreen,
+    output reg [3:0] vgaRed,
+    output reg [3:0] vgaBlue,
+    output reg [3:0] vgaGreen,
     output Hsync,
     output Vsync,
     output RsTx,
@@ -60,7 +60,7 @@ module vgaSystem(
     reg pix_stb;
     always @(posedge clk)
         {pix_stb, cnt} <= cnt + 16'h4000;  // divide by 4: (2^16)/4 = 0x4000
-    
+    wire active;
     vga_controller vga_controller
     (
         .h_sync(Hsync),
@@ -71,7 +71,8 @@ module vgaSystem(
         .end_of_frame(vga_endframe),
         .clk(clk),
         .i_pix_stb(pix_stb),
-        .animate(animate)
+        .animate(animate),
+        .active(active)
     );
     
     wire tx_idle;
@@ -136,7 +137,7 @@ module vgaSystem(
     assign b_b = 
         (sq_b_b_x + sq_b_b_y <= sq_r_b) ? 4'b1111 : 4'b0000;
 
-    //heart
+    // heart
     // wire [15:0] heart_x;
     // wire [15:0] heart_y;
     // wire [15:0] h_x;
@@ -273,22 +274,62 @@ module vgaSystem(
         & (vga_x <= movingBar_x + movingBar_radius)
         & (vga_y >= movingBar_y) & (vga_y <= movingBar_y + 150)) ? 4'b0111 : 4'b0000;
     // RGB
-    assign vgaRed[3:0] = 
-        frameFight 
-        | scoreBarYellow 
-        | scoreBarOrange
-        | (scoreBarBlue & 4'b1000)
-        | movingBar;//b_a | b_b | heart |frame | monster_hp_bar;
-    assign vgaGreen[3:0] =
-        frameFight 
-        | scoreBarYellow 
-        | scoreBarGreen 
-        | (scoreBarOrange & 4'b1010)
-        | (scoreBarBlue & 4'b1100); //b_a | b_b | frame | player_hp_bar;
-    assign vgaBlue[3:0] = 
-        frameFight
-        | (scoreBarBlue & 4'b1111); //b_a | b_b | frame;
-   
+    // assign vgaRed[3:0] = 
+    //     frameFight 
+    //     | scoreBarYellow 
+    //     | scoreBarOrange
+    //     | (scoreBarBlue & 4'b1000)
+    //     | movingBar;//b_a | b_b | heart |frame | monster_hp_bar;
+    // assign vgaGreen[3:0] =
+    //     frameFight 
+    //     | scoreBarYellow 
+    //     | scoreBarGreen 
+    //     | (scoreBarOrange & 4'b1010)
+    //     | (scoreBarBlue & 4'b1100); //b_a | b_b | frame | player_hp_bar;
+    // assign vgaBlue[3:0] = 
+    //     frameFight
+    //     | (scoreBarBlue & 4'b1111); //b_a | b_b | frame;
+   // instantiate BeeSprite code
+    wire [1:0] BeeSpriteOn; // 1=on, 0=off
+    wire [7:0] dout; // pixel value from Bee.mem
+    BeeSprite BeeDisplay (.i_clk(clk),.xx(vga_x),.yy(vga_y),.aactive(active),
+                          .BSpriteOn(BeeSpriteOn),.dataout(dout));
+  
+    // load colour palette
+    reg [7:0] palette [0:191]; // 8 bit values from the 192 hex entries in the colour palette
+    reg [7:0] COL = 0; // background colour palette value
+    initial begin
+        $readmemh("pal24bit.mem", palette); // load 192 hex values into "palette"
+    end
+
+    // draw on the active area of the screen
+    always @ (posedge pix_stb)
+    begin
+        if (active)
+            begin
+                if (BeeSpriteOn==1)
+                    begin
+                        vgaRed[3:0] <= (palette[(dout*3)])>>4; // RED bits(7:4) from colour palette
+                        vgaGreen[3:0] <= (palette[(dout*3)+1])>>4; // GREEN bits(7:4) from colour palette
+                        vgaBlue[3:0] <= (palette[(dout*3)+2])>>4; // BLUE bits(7:4) from colour palette
+                    end
+                else
+                    begin
+                        vgaRed[3:0] <= (palette[(COL*3)])>>4; // RED bits(7:4) from colour palette
+                        vgaGreen[3:0] <= (palette[(COL*3)+1])>>4; // GREEN bits(7:4) from colour palette
+                        vgaBlue[3:0] <= (palette[(COL*3)+2])>>4; // BLUE bits(7:4) from colour palette
+                    end
+            end
+        else
+            begin
+                vgaRed[3:0] <= 0; // set RED, GREEN & BLUE
+                vgaGreen[3:0] <= 0; // to "0" when x,y outside of
+                vgaBlue[3:0] <= 0; // the active display area
+            end
+    
+    end
+
+    
     // heart equation BUT dose not work
 //    wire [31:0] sq_h_x = (vga_x - h_x) * (vga_x - h_x);
 //    wire [31:0] sq_h_y = (vga_y - h_y) * (vga_y - h_y);
