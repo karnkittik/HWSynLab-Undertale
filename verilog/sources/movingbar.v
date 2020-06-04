@@ -45,7 +45,6 @@ module movingbar #(
     output wire [15:0] o_cy,
     output wire [15:0] o_r,
     output wire [15:0] o_h,
-    output reg done,
     output reg o_tx_transmit,
     output reg [7:0] o_tx_data
     );
@@ -60,6 +59,24 @@ module movingbar #(
     assign o_r = R;
     assign o_h = F_HEIGHT;
     reg done = 0;
+    
+    always @(posedge i_clk)
+    begin
+        if (i_rx_receive == 1)
+            begin
+                case (i_rx_data)
+                    8'h20: begin 
+                        o_tx_transmit = 1;
+                        o_tx_data = 8'h20;
+                        done <= 1;
+                    end
+                endcase     
+            end
+        else 
+        begin
+            o_tx_transmit = 0;
+        end
+    end
     
     always @(posedge i_clk)
     begin
@@ -94,22 +111,7 @@ module movingbar #(
             //     y_dir <= 0; // bottom edge->change direction to up
             //     y <= FY+F_HEIGHT-R;
             // end
-            if (i_rx_receive == 1)
-            begin
-    //            counter = counter + 1;
-                case (i_rx_data)
-                    8'h20: begin 
-                        // if(y-VELOCITY >= FY+R) y <= y-VELOCITY;
-                        o_tx_transmit = 1;
-                        o_tx_data = 8'h20;
-                        done = 1;
-                    end
-                endcase     
-            end
-            else 
-            begin
-                o_tx_transmit = 0;
-            end
+            
         end
     end
     
