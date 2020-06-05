@@ -299,7 +299,7 @@ module vgaSystem(
     reg [7:0] palette [0:191]; // 8 bit values from the 192 hex entries in the colour palette
     reg [7:0] COL = 0; // background colour palette value
     initial begin
-        $readmemh("pal24bit.mem", palette); // load 192 hex values into "palette"
+        $readmemh("pal24bitmaybe.mem", palette); // load 192 hex values into "palette"
     end
 
     // draw on the active area of the screen

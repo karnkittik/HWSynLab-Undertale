@@ -12,10 +12,10 @@ module BeeRom(
     output reg [7:0] o_data // (7:0) 8 bit pixel value from Bee.mem
     );
 
-    (*ROM_STYLE="block"*) reg [7:0] memory_array [0:917]; // 8 bit values for 918 pixels of Bee (34 x 27)
+    (*ROM_STYLE="block"*) reg [7:0] memory_array [0:1289]; // 8 bit values for 918 pixels of Bee (34 x 27)
 
     initial begin
-            $readmemh("Bee.mem", memory_array);
+            $readmemh("maybe.mem", memory_array);
     end
 
     always @ (posedge i_clk2)

@@ -20,10 +20,10 @@ module BeeSprite(
     BeeRom BeeVRom (.i_addr(address),.i_clk2(i_clk),.o_data(dataout));
     
     // setup character positions and sizes
-    reg [9:0] BeeX = 300; // Bee X start position
-    reg [8:0] BeeY = 100; // Bee Y start position
-    localparam BeeWidth = 34; // Bee width in pixels
-    localparam BeeHeight = 27; // Bee height in pixels
+    reg [9:0] BeeX = 50; // Bee X start position
+    reg [8:0] BeeY = 50; // Bee Y start position
+    localparam BeeWidth = 26; // Bee width in pixels 34
+    localparam BeeHeight = 37; // Bee height in pixels 27
     
     // check if xx,yy are within the confines of the Bee character
     always @ (posedge i_clk)
