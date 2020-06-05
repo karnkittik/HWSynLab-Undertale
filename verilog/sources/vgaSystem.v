@@ -25,9 +25,9 @@ module vgaSystem(
     output [6:0] seg,
     output dp,
     output [3:0] an,
-    output reg [3:0] vgaRed,
-    output reg [3:0] vgaBlue,
-    output reg [3:0] vgaGreen,
+    output [3:0] vgaRed,
+    output [3:0] vgaBlue,
+    output [3:0] vgaGreen,
     output Hsync,
     output Vsync,
     output RsTx,
@@ -60,7 +60,18 @@ module vgaSystem(
     reg pix_stb;
     always @(posedge clk)
         {pix_stb, cnt} <= cnt + 16'h4000;  // divide by 4: (2^16)/4 = 0x4000
-    wire active;
+    
+    reg [31:0] cnt2;
+    reg a_second_tick;
+    assign led[15] = a_second_tick;
+    always @(posedge clk)
+        if(cnt2 == 32'd50000000) 
+        begin
+            a_second_tick <= ~a_second_tick;
+            cnt2 <= 0;
+        end
+        else cnt2 <= cnt2 + 1;
+        
     vga_controller vga_controller
     (
         .h_sync(Hsync),
@@ -71,13 +82,12 @@ module vgaSystem(
         .end_of_frame(vga_endframe),
         .clk(clk),
         .i_pix_stb(pix_stb),
-        .animate(animate),
-        .active(active)
+        .animate(animate)
     );
     
     wire tx_idle;
-    wire [7:0] tx_data;
-    wire tx_transmit;
+    reg [7:0] tx_data;
+    reg tx_transmit;
     uart_transmitter uart_transmitter
     (
         .tx(RsTx),
@@ -98,6 +108,67 @@ module vgaSystem(
         .rx(RsRx),
         .clk(clk)
     );
+    
+    reg ENTER_KEY = 0;
+    reg W_KEY = 0;
+    reg A_KEY = 0;
+    reg S_KEY = 0;
+    reg D_KEY = 0;
+    reg SPACE_KEY = 0;
+    
+    always @(posedge clk)
+    begin
+        if(rx_receive == 1)
+        begin
+            case (rx_data)
+                8'h0d: begin // ENTER_KEY
+                    tx_transmit <= 1;
+                    tx_data <= 8'h0d;
+                    ENTER_KEY <= 1;
+                end
+                8'h20: begin // SPACE_KEY
+                    tx_transmit <= 1;
+                    tx_data <= 8'h20;
+                    SPACE_KEY <= 1;
+                end
+                8'h77: begin // W_KEY
+                    tx_transmit <= 1;
+                    tx_data <= 8'h77;
+                    W_KEY <= 1;
+                end
+                8'h61: begin // A_KEY
+                    tx_transmit <= 1;
+                    tx_data <= 8'h61;
+                    A_KEY <= 1;
+                end
+                8'h73: begin // S_KEY
+                    tx_transmit <= 1;
+                    tx_data <= 8'h73;
+                    S_KEY <= 1;
+                end
+                8'h64: begin // D_KEY
+                    tx_transmit <= 1;
+                    tx_data <= 8'h64;
+                    D_KEY <= 1;
+                end
+            endcase   
+        end
+        else 
+        begin
+            tx_transmit <= 0;
+            {ENTER_KEY, W_KEY, A_KEY, S_KEY, D_KEY, SPACE_KEY} <= 6'b000000;
+        end
+    end
+    
+    // Home Screen
+    wire home;
+    assign home =
+        ((vga_x >= 0) && (vga_x <= WIDTH) && (vga_y >=0) && (vga_y <= HEIGHT)) ? 4'b1111 : 4'b0000;
+        
+    // Face the monster
+    wire face_monster;
+    assign face_monster =
+        ((vga_x >= 0) && (vga_x <= WIDTH) && (vga_y >=0) && (vga_y <= HEIGHT)) ? 4'b1111 : 4'b0000;
     
     // ball a
     wire [15:0] ball_a_x;
@@ -137,30 +208,30 @@ module vgaSystem(
     assign b_b = 
         (sq_b_b_x + sq_b_b_y <= sq_r_b) ? 4'b1111 : 4'b0000;
 
-    // heart
-    // wire [15:0] heart_x;
-    // wire [15:0] heart_y;
-    // wire [15:0] h_x;
-    // wire [15:0] h_y;
-    // wire [15:0] h_radius;
-    // heart #(.R(10), .X_ENABLE(1), .Y_ENABLE(1), .VELOCITY(2), .C_X(75), .C_Y(75)) Heart(
-    //     .i_clk(clk),
-    //     .i_ani_stb(pix_stb),
-    //     .i_animate(animate),
-    //     .i_rx_receive(rx_receive),
-    //     .i_rx_data(rx_data),
-    //     .o_cx(h_x),
-    //     .o_cy(h_y),
-    //     .o_r(h_radius),
-    //     .o_tx_transmit(tx_transmit),
-    //     .o_tx_data(tx_data)
-    // );
-    // wire [3:0] heart;
-    // wire [20:0] sq_h_x = (vga_x - h_x) * (vga_x - h_x);
-    // wire [20:0] sq_h_y = (vga_y - h_y) * (vga_y - h_y);
-    // wire [20:0] sq_h_r = h_radius * h_radius;
-    // assign heart = 
-    //     (sq_h_x + sq_h_y <= sq_h_r) ? 4'b1111 : 4'b0000;
+     // heart
+     wire [15:0] heart_x;
+     wire [15:0] heart_y;
+     wire [15:0] h_x;
+     wire [15:0] h_y;
+     wire [15:0] h_radius;
+     heart #(.R(10), .X_ENABLE(1), .Y_ENABLE(1), .VELOCITY(2), .C_X(75), .C_Y(75)) Heart(
+         .i_clk(clk),
+         .i_ani_stb(pix_stb),
+         .i_animate(animate),
+         .i_w_key(W_KEY),
+         .i_a_key(A_KEY),
+         .i_s_key(S_KEY),
+         .i_d_key(D_KEY),
+         .o_cx(h_x),
+         .o_cy(h_y),
+         .o_r(h_radius)
+     );
+     wire [3:0] heart;
+     wire [20:0] sq_h_x = (vga_x - h_x) * (vga_x - h_x);
+     wire [20:0] sq_h_y = (vga_y - h_y) * (vga_y - h_y);
+     wire [20:0] sq_h_r = h_radius * h_radius;
+     assign heart = 
+         (sq_h_x + sq_h_y <= sq_h_r) ? 4'b1111 : 4'b0000;
 
      //player bar
     wire [14:0] player_total_hp = 16'd300;
@@ -255,81 +326,150 @@ module vgaSystem(
     wire [15:0] movingBar_y;
     wire [15:0] movingBar_radius;
     wire [15:0] movingBar_height;
-    movingbar #(.R(2), .X_ENABLE(1), .VELOCITY(5), .I_X(15)) Moving_Bar(
+    wire movingbar_stop = 1;
+    reg movingbar_active = 0;
+    movingbar #(.R(2), .VELOCITY(5), .I_X(15)) Moving_Bar(
         .i_clk(clk),
         .i_ani_stb(pix_stb),
         .i_animate(animate),
-        .i_rx_receive(rx_receive),
-        .i_rx_data(rx_data),
+        .i_space_key(SPACE_KEY),
+        .i_active(movingbar_active),
         .o_cx(movingBar_x),
         .o_cy(movingBar_y),
         .o_r(movingBar_radius),
         .o_h(movingBar_height),
-        .o_tx_transmit(tx_transmit),
-        .o_tx_data(tx_data)
+        .o_stop(movingbar_stop)
     );
     wire [3:0] movingBar;
     assign movingBar = 
         ((vga_x >= movingBar_x - movingBar_radius)
         & (vga_x <= movingBar_x + movingBar_radius)
         & (vga_y >= movingBar_y) & (vga_y <= movingBar_y + 150)) ? 4'b0111 : 4'b0000;
+        
+    // state
+    reg [15:0] state = 16'h00; 
+    reg is_monster_dead = monster_remain_hp==0 ? 1 : 0;
+    reg is_player_dead = player_remain_hp==0 ? 1 : 0;
+    
     // RGB
-    // assign vgaRed[3:0] = 
-    //     frameFight 
-    //     | scoreBarYellow 
-    //     | scoreBarOrange
-    //     | (scoreBarBlue & 4'b1000)
-    //     | movingBar;//b_a | b_b | heart |frame | monster_hp_bar;
-    // assign vgaGreen[3:0] =
-    //     frameFight 
-    //     | scoreBarYellow 
-    //     | scoreBarGreen 
-    //     | (scoreBarOrange & 4'b1010)
-    //     | (scoreBarBlue & 4'b1100); //b_a | b_b | frame | player_hp_bar;
-    // assign vgaBlue[3:0] = 
-    //     frameFight
-    //     | (scoreBarBlue & 4'b1111); //b_a | b_b | frame;
-   // instantiate BeeSprite code
-    wire [1:0] BeeSpriteOn; // 1=on, 0=off
-    wire [7:0] dout; // pixel value from Bee.mem
-    BeeSprite BeeDisplay (.i_clk(clk),.xx(vga_x),.yy(vga_y),.aactive(active),
-                          .BSpriteOn(BeeSpriteOn),.dataout(dout));
-  
-    // load colour palette
-    reg [7:0] palette [0:191]; // 8 bit values from the 192 hex entries in the colour palette
-    reg [7:0] COL = 0; // background colour palette value
-    initial begin
-        $readmemh("pal24bitmaybe.mem", palette); // load 192 hex values into "palette"
-    end
-
-    // draw on the active area of the screen
-    always @ (posedge pix_stb)
+    reg [3:0] reg_vgaRed = 4'b0000;
+    reg [3:0] reg_vgaGreen = 4'b0000;
+    reg [3:0] reg_vgaBlue = 4'b0000;
+    assign vgaRed[3:0] = reg_vgaRed;
+    assign vgaGreen[3:0] = reg_vgaGreen;
+    assign vgaBlue[3:0] = reg_vgaBlue;
+    
+//    assign vgaRed[3:0] =
+//        movingBar 
+//        | frameFight 
+//        | scoreBarYellow 
+//        | scoreBarOrange
+//        | (scoreBarBlue & 4'b1000);//b_a | b_b | heart |frame | monster_hp_bar;
+//    assign vgaGreen[3:0] =
+//        frameFight 
+//        | scoreBarYellow 
+//        | scoreBarGreen 
+//        | (scoreBarOrange & 4'b1010)
+//        | (scoreBarBlue & 4'b1100); //b_a | b_b | frame | player_hp_bar;
+//    assign vgaBlue[3:0] = 
+//        frameFight
+//        | (scoreBarBlue & 4'b1111); //b_a | b_b | frame;
+    reg start_attack_timer = 0;
+    reg [3:0] monster_attack_timer = 4'd0;
+    
+    always @(posedge a_second_tick)
     begin
-        if (active)
-            begin
-                if (BeeSpriteOn==1)
-                    begin
-                        vgaRed[3:0] <= (palette[(dout*3)])>>4; // RED bits(7:4) from colour palette
-                        vgaGreen[3:0] <= (palette[(dout*3)+1])>>4; // GREEN bits(7:4) from colour palette
-                        vgaBlue[3:0] <= (palette[(dout*3)+2])>>4; // BLUE bits(7:4) from colour palette
-                    end
-                else
-                    begin
-                        vgaRed[3:0] <= (palette[(COL*3)])>>4; // RED bits(7:4) from colour palette
-                        vgaGreen[3:0] <= (palette[(COL*3)+1])>>4; // GREEN bits(7:4) from colour palette
-                        vgaBlue[3:0] <= (palette[(COL*3)+2])>>4; // BLUE bits(7:4) from colour palette
-                    end
-            end
-        else
-            begin
-                vgaRed[3:0] <= 0; // set RED, GREEN & BLUE
-                vgaGreen[3:0] <= 0; // to "0" when x,y outside of
-                vgaBlue[3:0] <= 0; // the active display area
-            end
-    
+        if(start_attack_timer==1) monster_attack_timer <= monster_attack_timer + 4'd1;
+        else monster_attack_timer <= 0;
     end
-
     
+    always @(posedge clk)
+    begin
+        case(state)
+            16'h00: begin // HOME SCREEN
+                // component to render
+                reg_vgaRed <= home;
+                reg_vgaGreen <= home;
+                reg_vgaBlue <= home;
+                // if ENTER, next state: MONSTER FOUND
+                if(ENTER_KEY==1) state <= 16'h10;
+            end
+            16'h10: begin // FACE THE MONSTER
+                // component to render
+                reg_vgaRed <= face_monster;
+                reg_vgaGreen <= face_monster;
+                reg_vgaBlue <= face_monster;
+                // if player select FIGHT
+                if(ENTER_KEY==1) 
+                begin
+                    state <= 16'h20;
+                    movingbar_active <= 1;
+                end
+            end
+            16'h20: begin // PLAYER ATTACKS MONSTER
+                // component to render
+                reg_vgaRed <= movingBar 
+                | frameFight 
+                | scoreBarYellow 
+                | scoreBarOrange
+                | (scoreBarBlue & 4'b1000)
+                | monster_hp_bar;
+                
+                reg_vgaGreen <= frameFight 
+                | scoreBarYellow 
+                | scoreBarGreen 
+                | (scoreBarOrange & 4'b1010)
+                | (scoreBarBlue & 4'b1100)
+                | monster_hp_bar;
+                
+                reg_vgaBlue <= frameFight
+                | (scoreBarBlue & 4'b1111)
+                | monster_hp_bar;
+                
+                // if moving bar is gone, next state: MONSTER ATTACKS PLAYER
+                if(is_monster_dead==1) 
+                begin
+                    movingbar_active <= 0;
+                    state <= 16'h00; // back to HOME SCREEN
+                end
+                
+                if(movingbar_stop==1) 
+                begin
+                    state <= 16'h30;
+                    movingbar_active <= 0;
+                end
+            end
+            16'h30: begin // MONSTER ATTACKS PLAYER
+                // component to render
+                reg_vgaRed <= b_a 
+                | b_b 
+                | heart 
+                | frameEscape 
+                | frameFight
+                | monster_hp_bar;
+                reg_vgaGreen <= b_a 
+                | b_b 
+                | frameEscape 
+                | frameFight
+                | player_hp_bar;
+                reg_vgaBlue <= b_a 
+                | b_b 
+                | frameEscape 
+                | frameFight;
+                
+                if(is_player_dead==1) state <= 16'h00; // back to HOME SCREEN
+                // after 5 seconds, next state: FACE THE MONSTER
+                start_attack_timer <= 1;
+                if(monster_attack_timer==4'd6)
+                begin
+                    start_attack_timer <= 0;
+                    state <= 16'h10;
+                end
+                
+            end
+        endcase
+    end
+   
     // heart equation BUT dose not work
 //    wire [31:0] sq_h_x = (vga_x - h_x) * (vga_x - h_x);
 //    wire [31:0] sq_h_y = (vga_y - h_y) * (vga_y - h_y);
