@@ -190,6 +190,34 @@ module vgaSystem(
     wire [3:0] face_monster;
     assign face_monster [3:0] = 4'b1111;
     
+    // cursor
+    //0 = FIGHT, 1 = ACT, 2 = ITEM, 3 = MERCY
+    reg [1:0] cursor_position = 2'd0; 
+    reg cursor_position_rst = 0;
+    always @(posedge clk)
+    begin
+        if(cursor_position_rst==1) cursor_position <= 2'd0;
+        else if(A_KEY==1 && cursor_position!=2'd0) cursor_position <= cursor_position-1;
+        else if(D_KEY==1 && cursor_position!=2'd3) cursor_position <= cursor_position+1;
+    end
+    wire [15:0] cursor_position_x;
+    wire [15:0] cursor_position_y;
+    wire [15:0] cursor_radius;
+    cursor Cursor(
+        .i_clk(clk),
+        .i_cursor_position(cursor_position),
+        .o_cx(cursor_position_x),
+        .o_cy(cursor_position_y),
+        .o_cr(cursor_radius)
+    );
+    wire [3:0] cursor;
+    wire [20:0] sq_cursor_x = (vga_x - cursor_position_x) * (vga_x - cursor_position_x);
+    wire [20:0] sq_cursor_y = (vga_y - cursor_position_y) * (vga_y - cursor_position_y);
+    wire [20:0] sq_cursor_radius = cursor_radius * cursor_radius;
+    assign cursor = 
+        (sq_cursor_x + sq_cursor_y <= sq_cursor_radius) ? 4'b1111 : 4'b0000;
+    assign led[15:14] = cursor_position;
+
     // ball a
     wire [15:0] ball_a_x;
     wire [15:0] ball_a_y;
@@ -253,7 +281,7 @@ module vgaSystem(
      assign heart = 
          (sq_h_x + sq_h_y <= sq_h_r) ? 4'b1111 : 4'b0000;
 
-     //player bar
+    // player bar
     wire [14:0] player_total_hp = 16'd300;
     wire [15:0] player_remain_hp = 16'd150;
     wire [15:0] lt_x_player_hp_bar;
@@ -380,6 +408,7 @@ module vgaSystem(
     initial begin
         $readmemh("pal24bitmaybe.mem", palette); // load 192 hex values into "palette"
     end
+    
     //draw a monster
     wire [3:0] monsterRed;
     wire [3:0] monsterGreen;
@@ -423,6 +452,7 @@ module vgaSystem(
         if(start_attack_timer==1) monster_attack_timer <= monster_attack_timer + 4'd1;
         else monster_attack_timer <= 0;
     end
+    
     //collision
     reg ball_a_heart  = 0;
     reg ball_b_heart  = 0;
@@ -436,22 +466,19 @@ module vgaSystem(
                 reg_vgaGreen <= home;
                 reg_vgaBlue <= home;
                 // if ENTER, next state: MONSTER FOUND
-                if(ENTER_KEY==1) state <= 16'h10;
+                if(ENTER_KEY==1) state <= 16'h1F;
             end
             16'h10: begin // FACE THE MONSTER
                 // component to render
-                reg_vgaRed <= monsterRed;
+                reg_vgaRed <= monsterRed 
+                | cursor;
                 reg_vgaGreen <= monsterGreen;
                 reg_vgaBlue <= monsterBlue;
                 // if player select FIGHT
-                if(ENTER_KEY==1) 
-                begin
-                    state <= 16'h20;
-                    movingbar_rst <= 1;
-                end
+                if(cursor_position==2'd0 && ENTER_KEY==1) state <= 16'h2F;
+                if(cursor_position==2'd3 && ENTER_KEY==1) state <= 16'h0F;
             end
             16'h20: begin // PLAYER ATTACKS MONSTER
-                movingbar_rst <= 0;
                 // component to render
                 reg_vgaRed <= movingBar 
                 | frameFight 
@@ -476,12 +503,12 @@ module vgaSystem(
                 
                 if(SPACE_KEY==1)
                 begin
-                    state <= 16'h30;
+                    state <= 16'h3F;
                 end
                 
-                if(is_monster_dead==1) state <= 16'h00; // back to HOME SCREEN
+                if(is_monster_dead==1) state <= 16'h0F; // back to HOME SCREEN
                 // if moving bar is gone, next state: MONSTER ATTACKS PLAYER
-                if(movingbar_overtime==1) state <= 16'h30; // go to MONSTER ATTACKS PLAYER
+                if(movingbar_overtime==1) state <= 16'h3F; // go to MONSTER ATTACKS PLAYER
             end
             16'h30: begin // MONSTER ATTACKS PLAYER
                 //collision
@@ -495,12 +522,12 @@ module vgaSystem(
                 | monster_hp_bar
                 | monsterRed;
                 reg_vgaGreen <= (~ball_a_heart ? b_a : 4'b0000)  
-                | (~ball_b_heart ? b_b : 4'b0000)    
+                | (~ball_b_heart ? b_b : 4'b0000)  
                 | frameEscape 
                 | player_hp_bar
                 | monsterGreen;
                 reg_vgaBlue <= (~ball_a_heart ? b_a : 4'b0000)  
-                | (~ball_b_heart ? b_b : 4'b0000)  
+                | (~ball_b_heart ? b_b : 4'b0000) 
                 | frameEscape
                 | monsterBlue;
                 
@@ -515,11 +542,55 @@ module vgaSystem(
                 if(monster_attack_timer==4'd6)
                 begin
                     start_attack_timer <= 0;
-                    state <= 16'h10;
+                    state <= 16'h1F;
                     // ball_a_heart <= 0;
                     // ball_b_heart <= 0;
                 end
-                
+            end
+            
+            //reset states
+            16'h0F: begin
+                //begin reset
+                state <= 16'h0E;
+            end
+            16'h0E: begin
+                //end reset
+                //////////////
+                state <= 16'h00;
+            end
+            16'h1F: begin
+                //begin reset
+                cursor_position_rst <= 1;
+                //////////////
+                state <= 16'h1E;
+            end
+            16'h1E: begin
+                //end reset
+                cursor_position_rst <= 0;
+                //////////////
+                state <= 16'h10;
+            end
+            16'h2F: begin
+                //begin reset
+                movingbar_rst <= 1;
+                //////////////
+                state <= 16'h2E;
+            end
+            16'h2E: begin
+                //end reset
+                movingbar_rst <= 0;
+                //////////////
+                state <= 16'h20;
+            end
+            16'h3F: begin
+                //begin reset
+                //////////////
+                state <= 16'h3E;
+            end
+            16'h3E: begin
+                //end reset
+                //////////////
+                state <= 16'h30;
             end
         endcase
     end
