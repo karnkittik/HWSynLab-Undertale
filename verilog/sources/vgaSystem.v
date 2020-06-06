@@ -222,10 +222,12 @@ module vgaSystem(
     wire [15:0] ball_a_x;
     wire [15:0] ball_a_y;
     wire [15:0] ball_a_radius;
+    reg ball_a_rst = 0;
     ball #(.R(5), .X_ENABLE(1), .Y_ENABLE(0), .VELOCITY(2), .C_X(10), .C_Y(20) ) ball_a(
         .i_clk(clk),
         .i_ani_stb(pix_stb),
         .i_animate(animate),
+        .i_rst(ball_a_rst),
         .o_cx(ball_a_x),
         .o_cy(ball_a_y),
         .o_r(ball_a_radius)
@@ -241,10 +243,12 @@ module vgaSystem(
     wire [15:0] ball_b_x;
     wire [15:0] ball_b_y;
     wire [15:0] ball_b_radius;
+    reg ball_b_rst = 0;
     ball #(.R(5), .X_ENABLE(0), .Y_ENABLE(1), .VELOCITY(3), .C_X(20), .C_Y(10) ) ball_b(
         .i_clk(clk),
         .i_ani_stb(pix_stb),
         .i_animate(animate),
+        .i_rst(ball_b_rst),
         .o_cx(ball_b_x),
         .o_cy(ball_b_y),
         .o_r(ball_b_radius)
@@ -262,10 +266,10 @@ module vgaSystem(
      wire [15:0] h_x;
      wire [15:0] h_y;
      wire [15:0] h_radius;
+     reg heart_rst = 0;
      heart #(.R(10), .X_ENABLE(1), .Y_ENABLE(1), .VELOCITY(2), .C_X(75), .C_Y(75)) Heart(
          .i_clk(clk),
-         .i_ani_stb(pix_stb),
-         .i_animate(animate),
+         .i_rst(heart_rst),
          .i_w_key(W_KEY),
          .i_a_key(A_KEY),
          .i_s_key(S_KEY),
@@ -375,7 +379,7 @@ module vgaSystem(
     wire [15:0] movingBar_radius;
     wire [15:0] movingBar_height;
     wire movingbar_overtime;
-    reg movingbar_rst;
+    reg movingbar_rst = 0;
     wire sp_movingbar_rst;
     singlePulser Movingbar_rst(.in(movingbar_rst), .clk(clk), .out(sp_movingbar_rst));
     
@@ -512,8 +516,8 @@ module vgaSystem(
             end
             16'h30: begin // MONSTER ATTACKS PLAYER
                 //collision
-                if(b_a & heart ) ball_a_heart <= 1;
-                if(b_b & heart ) ball_b_heart <= 1;
+                if(b_a & heart) ball_a_heart <= 1;
+                if(b_b & heart) ball_b_heart <= 1;
                 // component to render
                 reg_vgaRed <= (~ball_a_heart ? b_a : 4'b0000)  
                 | (~ball_b_heart ? b_b : 4'b0000)    
@@ -531,20 +535,13 @@ module vgaSystem(
                 | frameEscape
                 | monsterBlue;
                 
-                if(is_player_dead==1) 
-                begin
-                    state <= 16'h00; // back to HOME SCREEN
-                    ball_a_heart <= 0;
-                    ball_b_heart <= 0;
-                end
+                if(is_player_dead==1) state <= 16'h00; // back to HOME SCREEN
                 // after 5 seconds, next state: FACE THE MONSTER
                 start_attack_timer <= 1;
                 if(monster_attack_timer==4'd6)
                 begin
                     start_attack_timer <= 0;
                     state <= 16'h1F;
-                    // ball_a_heart <= 0;
-                    // ball_b_heart <= 0;
                 end
             end
             
@@ -584,11 +581,19 @@ module vgaSystem(
             end
             16'h3F: begin
                 //begin reset
+                ball_a_heart <= 0;
+                ball_b_heart <= 0;
+                ball_a_rst <= 1;
+                ball_b_rst <= 1;
+                heart_rst <= 1;
                 //////////////
                 state <= 16'h3E;
             end
             16'h3E: begin
                 //end reset
+                ball_a_rst <= 0;
+                ball_b_rst <= 0;
+                heart_rst <= 0;
                 //////////////
                 state <= 16'h30;
             end

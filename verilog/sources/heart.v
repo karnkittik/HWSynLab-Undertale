@@ -35,8 +35,7 @@ module heart #(
     )
     (
     input wire i_clk, // base clock
-    input wire i_ani_stb, // animation clock: pixel clock is 1 pix/frame
-    input wire i_animate, // animate when input is high
+    input wire i_rst,
     input wire i_w_key,
     input wire i_a_key,
     input wire i_s_key,
@@ -56,17 +55,25 @@ module heart #(
     
     always @(posedge i_clk)
     begin
-        if(i_w_key) begin
-            if(y-VELOCITY >= FY+R) y <= y-VELOCITY;
+        if(i_rst==1)
+        begin
+            x = C_X+FX;
+            y = C_Y+FY;
         end
-        if(i_a_key) begin
-            if(x-VELOCITY >= FX+R) x <= x-VELOCITY;
-        end
-        if(i_s_key) begin
-            if(y+VELOCITY <= FY+F_HEIGHT-R) y <= y+VELOCITY;
-        end
-        if(i_d_key) begin
-            if(x+VELOCITY <= FX+F_WIDTH-R) x <= x+VELOCITY;
+        else
+        begin
+            if(i_w_key) begin
+                if(y-VELOCITY >= FY+R) y <= y-VELOCITY;
+            end
+            if(i_a_key) begin
+                if(x-VELOCITY >= FX+R) x <= x-VELOCITY;
+            end
+            if(i_s_key) begin
+                if(y+VELOCITY <= FY+F_HEIGHT-R) y <= y+VELOCITY;
+            end
+            if(i_d_key) begin
+                if(x+VELOCITY <= FX+F_WIDTH-R) x <= x+VELOCITY;
+            end
         end
     end
     

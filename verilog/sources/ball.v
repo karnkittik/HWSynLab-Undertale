@@ -40,6 +40,7 @@ module ball #(
     input wire i_clk, // base clock
     input wire i_ani_stb, // animation clock: pixel clock is 1 pix/frame
     input wire i_animate, // animate when input is high
+    input wire i_rst,
     output wire [15:0] o_cx,
     output wire [15:0] o_cy,
     output wire [15:0] o_r,
@@ -61,39 +62,45 @@ module ball #(
     
     always @(posedge i_clk)
     begin
-        if(i_animate && i_ani_stb)
+        if(i_rst==1)
         begin
-
-            if(X_ENABLE) 
+            x <= C_X+FX;
+            y <= C_Y+FY;
+        end
+        begin     
+            if(i_animate && i_ani_stb)
             begin
-                x <= x_dir? x+VELOCITY:x-VELOCITY;
+    
+                if(X_ENABLE) 
+                begin
+                    x <= x_dir? x+VELOCITY:x-VELOCITY;
+                end
+                if(Y_ENABLE)
+                begin
+                    y <= y_dir? y+VELOCITY:y-VELOCITY;
+                end
+                
+                if(x < FX+R) 
+                begin
+                    x_dir <= 1; // left edge->change direction to right
+                    x <= FX+R;
+                end
+                if(x > FX+F_WIDTH-R) 
+                begin
+                    x_dir <= 0; // right edge->change direction to left
+                    x <= FX+F_WIDTH-R;
+                end
+                if(y < FY+R) 
+                begin
+                    y_dir <= 1; // top edge->change direction to down
+                    y <= FY+R;
+                end
+                if(y > FY+F_HEIGHT-R) 
+                begin
+                    y_dir <= 0; // bottom edge->change direction to up
+                    y <= FY+F_HEIGHT-R;
+                end
             end
-            if(Y_ENABLE)
-            begin
-                y <= y_dir? y+VELOCITY:y-VELOCITY;
-            end
-            
-            if(x < FX+R) 
-            begin
-                x_dir <= 1; // left edge->change direction to right
-                x <= FX+R;
-            end
-            if(x > FX+F_WIDTH-R) 
-            begin
-                x_dir <= 0; // right edge->change direction to left
-                x <= FX+F_WIDTH-R;
-            end
-            if(y < FY+R) 
-            begin
-                y_dir <= 1; // top edge->change direction to down
-                y <= FY+R;
-            end
-            if(y > FY+F_HEIGHT-R) 
-            begin
-                y_dir <= 0; // bottom edge->change direction to up
-                y <= FY+F_HEIGHT-R;
-            end
-            
         end
     end
     
