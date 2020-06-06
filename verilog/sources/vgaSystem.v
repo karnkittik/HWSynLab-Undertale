@@ -55,6 +55,7 @@ module vgaSystem(
     wire vga_endline;
     wire vga_endframe;
     wire animate;
+    wire active;
 //    clock_divider clock_divider_draw(pix_stb, clk, 4);
     reg [15:0] cnt;
     reg pix_stb;
@@ -82,7 +83,8 @@ module vgaSystem(
         .end_of_frame(vga_endframe),
         .clk(clk),
         .i_pix_stb(pix_stb),
-        .animate(animate)
+        .animate(animate),
+        .active(active)
     );
     
     wire tx_idle;
@@ -382,7 +384,25 @@ module vgaSystem(
         if(start_attack_timer==1) monster_attack_timer <= monster_attack_timer + 4'd1;
         else monster_attack_timer <= 0;
     end
-    
+    // instantiate BeeSprite code
+    wire [1:0] BeeSpriteOn; // 1=on, 0=off
+    wire [7:0] dout; // pixel value from Bee.mem
+    BeeSprite BeeDisplay (.i_clk(clk),.xx(vga_x),.yy(vga_y),.aactive(active),
+                          .BSpriteOn(BeeSpriteOn),.dataout(dout));
+  
+    // load colour palette
+    reg [7:0] palette [0:191]; // 8 bit values from the 192 hex entries in the colour palette
+    reg [7:0] COL = 0; // background colour palette value
+    initial begin
+        $readmemh("pal24bitmaybe.mem", palette); // load 192 hex values into "palette"
+    end
+    //draw a monster
+    wire [3:0] monsterRed;
+    wire [3:0] monsterGreen;
+    wire [3:0] monsterBlue;
+    assign monsterRed[3:0] = (active & BeeSpriteOn) ? (palette[(dout*3)])>>4 : 4'b0000;
+    assign monsterGreen[3:0] = (active & BeeSpriteOn) ? (palette[(dout*3)+1])>>4 : 4'b0000;
+    assign monsterBlue[3:0] = (active & BeeSpriteOn) ? (palette[(dout*3)+2])>>4 : 4'b0000;
     always @(posedge clk)
     begin
         case(state)
@@ -396,9 +416,12 @@ module vgaSystem(
             end
             16'h10: begin // FACE THE MONSTER
                 // component to render
-                reg_vgaRed <= face_monster;
-                reg_vgaGreen <= face_monster;
-                reg_vgaBlue <= face_monster;
+                reg_vgaRed <= face_monster
+                | monsterRed;
+                reg_vgaGreen <= face_monster
+                | monsterGreen;
+                reg_vgaBlue <= face_monster
+                | monsterBlue;
                 // if player select FIGHT
                 if(ENTER_KEY==1) 
                 begin
@@ -445,16 +468,16 @@ module vgaSystem(
                 | b_b 
                 | heart 
                 | frameEscape 
-                | frameFight
+                // | frameFight
                 | monster_hp_bar;
                 reg_vgaGreen <= b_a 
                 | b_b 
                 | frameEscape 
-                | frameFight
+                // | frameFight
                 | player_hp_bar;
                 reg_vgaBlue <= b_a 
                 | b_b 
-                | frameEscape 
+                // | frameEscape 
                 | frameFight;
                 
                 if(is_player_dead==1) state <= 16'h00; // back to HOME SCREEN

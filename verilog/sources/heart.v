@@ -37,13 +37,13 @@ module heart #(
     input wire i_clk, // base clock
     input wire i_ani_stb, // animation clock: pixel clock is 1 pix/frame
     input wire i_animate, // animate when input is high
-    input wire i_rx_receive,
-    input wire [7:0] i_rx_data,
+    input wire i_w_key,
+    input wire i_a_key,
+    input wire i_s_key,
+    input wire i_d_key,
     output wire [15:0] o_cx,
     output wire [15:0] o_cy,
-    output wire [15:0] o_r,
-    output reg o_tx_transmit,
-    output reg [7:0] o_tx_data
+    output wire [15:0] o_r
     );
     
     reg [15:0] x = C_X+FX;
@@ -53,43 +53,21 @@ module heart #(
     assign o_cy = y;
     assign o_r = R;
     
-    // debug
-    reg [15:0] counter = 0;
-    assign led = counter;
     
     always @(posedge i_clk)
     begin
-        if (i_rx_receive == 1)
-        begin
-//            counter = counter + 1;
-            case (i_rx_data)
-                8'h77: begin // w key; to top
-                    if(y-VELOCITY >= FY+R) y <= y-VELOCITY;
-                    o_tx_transmit = 1;
-                    o_tx_data = 8'h77;
-                end
-                8'h61: begin // a key; to left
-                    if(x-VELOCITY >= FX+R) x <= x-VELOCITY;
-                    o_tx_transmit = 1;
-                    o_tx_data = 8'h61;
-                end
-                8'h73: begin // s key; to bottom
-                    if(y+VELOCITY <= FY+F_HEIGHT-R) y <= y+VELOCITY;
-                    o_tx_transmit = 1;
-                    o_tx_data = 8'h73;
-                end
-                8'h64: begin // d key; to right
-                    if(x+VELOCITY <= FX+F_WIDTH-R) x <= x+VELOCITY;
-                    o_tx_transmit = 1;
-                    o_tx_data = 8'h64;
-                end
-            endcase     
+        if(i_w_key) begin
+            if(y-VELOCITY >= FY+R) y <= y-VELOCITY;
         end
-        else 
-        begin
-            o_tx_transmit = 0;
+        if(i_a_key) begin
+            if(x-VELOCITY >= FX+R) x <= x-VELOCITY;
         end
-        counter = counter + 1;
+        if(i_s_key) begin
+            if(y+VELOCITY <= FY+F_HEIGHT-R) y <= y+VELOCITY;
+        end
+        if(i_d_key) begin
+            if(x+VELOCITY <= FX+F_WIDTH-R) x <= x+VELOCITY;
+        end
     end
     
 endmodule
