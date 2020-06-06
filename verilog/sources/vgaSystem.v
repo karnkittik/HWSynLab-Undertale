@@ -423,7 +423,10 @@ module vgaSystem(
         if(start_attack_timer==1) monster_attack_timer <= monster_attack_timer + 4'd1;
         else monster_attack_timer <= 0;
     end
-    
+    //collision
+    reg ball_a_heart  = 0;
+    reg ball_b_heart  = 0;
+    //main
     always @(posedge clk)
     begin
         case(state)
@@ -481,30 +484,40 @@ module vgaSystem(
                 if(movingbar_overtime==1) state <= 16'h30; // go to MONSTER ATTACKS PLAYER
             end
             16'h30: begin // MONSTER ATTACKS PLAYER
+                //collision
+                if(b_a & heart ) ball_a_heart <= 1;
+                if(b_b & heart ) ball_b_heart <= 1;
                 // component to render
-                reg_vgaRed <= b_a 
-                | b_b 
+                reg_vgaRed <= (~ball_a_heart ? b_a : 4'b0000)  
+                | (~ball_b_heart ? b_b : 4'b0000)    
                 | heart 
                 | frameEscape 
                 | monster_hp_bar
                 | monsterRed;
-                reg_vgaGreen <= b_a 
-                | b_b 
+                reg_vgaGreen <= (~ball_a_heart ? b_a : 4'b0000)  
+                | (~ball_b_heart ? b_b : 4'b0000)    
                 | frameEscape 
                 | player_hp_bar
                 | monsterGreen;
-                reg_vgaBlue <= b_a 
-                | b_b 
+                reg_vgaBlue <= (~ball_a_heart ? b_a : 4'b0000)  
+                | (~ball_b_heart ? b_b : 4'b0000)  
                 | frameEscape
                 | monsterBlue;
                 
-                if(is_player_dead==1) state <= 16'h00; // back to HOME SCREEN
+                if(is_player_dead==1) 
+                begin
+                    state <= 16'h00; // back to HOME SCREEN
+                    ball_a_heart <= 0;
+                    ball_b_heart <= 0;
+                end
                 // after 5 seconds, next state: FACE THE MONSTER
                 start_attack_timer <= 1;
                 if(monster_attack_timer==4'd6)
                 begin
                     start_attack_timer <= 0;
                     state <= 16'h10;
+                    // ball_a_heart <= 0;
+                    // ball_b_heart <= 0;
                 end
                 
             end
