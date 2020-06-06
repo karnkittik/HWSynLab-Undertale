@@ -216,12 +216,12 @@ module vgaSystem(
     wire [20:0] sq_cursor_radius = cursor_radius * cursor_radius;
     assign cursor = 
         (sq_cursor_x + sq_cursor_y <= sq_cursor_radius) ? 4'b1111 : 4'b0000;
-    assign led[15:14] = cursor_position;
 
     // ball a
     wire [15:0] ball_a_x;
     wire [15:0] ball_a_y;
     wire [15:0] ball_a_radius;
+    reg [15:0] ball_a_damage = 16'd50;
     reg ball_a_rst = 0;
     ball #(.R(5), .X_ENABLE(1), .Y_ENABLE(0), .VELOCITY(2), .C_X(10), .C_Y(20) ) ball_a(
         .i_clk(clk),
@@ -243,6 +243,7 @@ module vgaSystem(
     wire [15:0] ball_b_x;
     wire [15:0] ball_b_y;
     wire [15:0] ball_b_radius;
+    reg [15:0] ball_b_damage = 16'd50;
     reg ball_b_rst = 0;
     ball #(.R(5), .X_ENABLE(0), .Y_ENABLE(1), .VELOCITY(3), .C_X(20), .C_Y(10) ) ball_b(
         .i_clk(clk),
@@ -286,8 +287,9 @@ module vgaSystem(
          (sq_h_x + sq_h_y <= sq_h_r) ? 4'b1111 : 4'b0000;
 
     // player bar
-    wire [14:0] player_total_hp = 16'd300;
-    wire [15:0] player_remain_hp = 16'd150;
+    reg [15:0] player_total_hp = 16'd200;
+    reg [15:0] player_remain_hp = 16'd200;
+    reg [15:0] player_damage = 16'd50;
     wire [15:0] lt_x_player_hp_bar;
     wire [15:0] lt_y_player_hp_bar;
     wire [15:0] br_x_player_hp_bar;
@@ -309,8 +311,8 @@ module vgaSystem(
         & (vga_y>=lt_y_player_hp_bar) & (vga_y<=br_y_player_hp_bar)) ? 4'b1111 : 4'b0000;
 
     //monster bar
-    wire [14:0] monster_total_hp = 16'd500;
-    wire [15:0] monster_remain_hp = 16'd200;
+    reg [15:0] monster_total_hp = 16'd200;
+    reg [15:0] monster_remain_hp = 16'd200;
     wire [15:0] lt_x_monster_hp_bar;
     wire [15:0] lt_y_monster_hp_bar;
     wire [15:0] br_x_monster_hp_bar;
@@ -421,9 +423,7 @@ module vgaSystem(
     assign monsterGreen[3:0] = (active & BeeSpriteOn) ? (palette[(dout*3)+1])>>4 : 4'b0000;
     assign monsterBlue[3:0] = (active & BeeSpriteOn) ? (palette[(dout*3)+2])>>4 : 4'b0000;    
     // state
-    reg [15:0] state = 16'h00; 
-    reg is_monster_dead = monster_remain_hp==0 ? 1 : 0;
-    reg is_player_dead = player_remain_hp==0 ? 1 : 0;
+    reg [15:0] state = 16'h0F; 
     
     // RGB
     reg [3:0] reg_vgaRed = 4'b0000;
@@ -433,21 +433,6 @@ module vgaSystem(
     assign vgaGreen[3:0] = reg_vgaGreen;
     assign vgaBlue[3:0] = reg_vgaBlue;
     
-//    assign vgaRed[3:0] =
-//        movingBar 
-//        | frameFight 
-//        | scoreBarYellow 
-//        | scoreBarOrange
-//        | (scoreBarBlue & 4'b1000);//b_a | b_b | heart |frame | monster_hp_bar;
-//    assign vgaGreen[3:0] =
-//        frameFight 
-//        | scoreBarYellow 
-//        | scoreBarGreen 
-//        | (scoreBarOrange & 4'b1010)
-//        | (scoreBarBlue & 4'b1100); //b_a | b_b | frame | player_hp_bar;
-//    assign vgaBlue[3:0] = 
-//        frameFight
-//        | (scoreBarBlue & 4'b1111); //b_a | b_b | frame;
     reg start_attack_timer = 0;
     reg [3:0] monster_attack_timer = 4'd0;
     
@@ -456,6 +441,10 @@ module vgaSystem(
         if(start_attack_timer==1) monster_attack_timer <= monster_attack_timer + 4'd1;
         else monster_attack_timer <= 0;
     end
+    
+    assign led[15] = a_second_tick;
+    assign led[13:10] = monster_attack_timer;
+    assign led[9:0] = player_remain_hp;
     
     //collision
     reg ball_a_heart  = 0;
@@ -495,29 +484,41 @@ module vgaSystem(
                 reg_vgaGreen <= frameFight 
                 | scoreBarYellow 
                 | scoreBarGreen 
+                | player_hp_bar
                 | (scoreBarOrange & 4'b1010)
                 | (scoreBarBlue & 4'b1100)
-                | monster_hp_bar
                 | monsterGreen;
                 
                 reg_vgaBlue <= frameFight
                 | (scoreBarBlue & 4'b1111)
-                | monster_hp_bar
                 | monsterBlue;
                 
                 if(SPACE_KEY==1)
                 begin
-                    state <= 16'h3F;
+                    if(monster_remain_hp <= player_damage) state <= 16'h0F;
+                    else 
+                    begin
+                        monster_remain_hp <= monster_remain_hp - player_damage;
+                        state <= 16'h3F;
+                    end 
                 end
-                
-                if(is_monster_dead==1) state <= 16'h0F; // back to HOME SCREEN
                 // if moving bar is gone, next state: MONSTER ATTACKS PLAYER
                 if(movingbar_overtime==1) state <= 16'h3F; // go to MONSTER ATTACKS PLAYER
             end
             16'h30: begin // MONSTER ATTACKS PLAYER
                 //collision
-                if(b_a & heart) ball_a_heart <= 1;
-                if(b_b & heart) ball_b_heart <= 1;
+                if((b_a==4'b1111) & (heart==4'b1111) & (~ball_a_heart)) 
+                begin
+                    ball_a_heart <= 1;
+                    if(player_remain_hp <= ball_a_damage) state <= 16'h0F; // PLAYER DIED -> back to HOME SCREEN
+                    else player_remain_hp <= player_remain_hp - ball_a_damage;
+                end
+                if((b_b==4'b1111) & (heart==4'b1111) & (~ball_b_heart)) 
+                begin
+                    ball_b_heart <= 1;
+                    if(player_remain_hp <= ball_b_damage) state <= 16'h0F; // PLAYER DIED -> back to HOME SCREEN
+                    else player_remain_hp <= player_remain_hp - ball_b_damage;
+                end
                 // component to render
                 reg_vgaRed <= (~ball_a_heart ? b_a : 4'b0000)  
                 | (~ball_b_heart ? b_b : 4'b0000)    
@@ -535,7 +536,6 @@ module vgaSystem(
                 | frameEscape
                 | monsterBlue;
                 
-                if(is_player_dead==1) state <= 16'h00; // back to HOME SCREEN
                 // after 5 seconds, next state: FACE THE MONSTER
                 start_attack_timer <= 1;
                 if(monster_attack_timer==4'd6)
@@ -548,6 +548,9 @@ module vgaSystem(
             //reset states
             16'h0F: begin
                 //begin reset
+                player_remain_hp <= player_total_hp;
+                monster_remain_hp <= monster_total_hp;
+                //////////////
                 state <= 16'h0E;
             end
             16'h0E: begin
