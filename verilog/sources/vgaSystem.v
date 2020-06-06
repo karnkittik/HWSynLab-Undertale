@@ -43,11 +43,9 @@ module vgaSystem(
     
     parameter WIDTH = 640;
     parameter HEIGHT = 480;
-    parameter FX = 245; // coordinate x of fighting box
-    parameter FY = 230; // coordinate y of fighting box
-    parameter F_WIDTH = 150; // width of fighting box
-    parameter F_HEIGHT = 150; // height of fighting box
     
+    wire [9:0] screen_width = WIDTH;
+    wire [8:0] screen_height = HEIGHT;
 //    wire vga_clk;
 //    clock_divider clock_divider_vga(vga_clk, clk, 2);
     wire [15:0] vga_x;
@@ -64,7 +62,6 @@ module vgaSystem(
     
     reg [31:0] cnt2;
     reg a_second_tick;
-    assign led[15] = a_second_tick;
     always @(posedge clk)
         if(cnt2 == 32'd50000000) 
         begin
@@ -162,15 +159,36 @@ module vgaSystem(
         end
     end
     
+    reg [7:0] font [96*16-1:0];
+    reg [7:0] name [15*40-1:0];
+
+    initial begin
+        $readmemb("name.txt", name, 0, 5 * 40 - 1);
+        $readmemb("font.txt", font, 0, 96 * 16 - 1);
+    end
+    
     // Home Screen
-    wire home;
-    assign home =
-        ((vga_x >= 0) && (vga_x <= WIDTH) && (vga_y >=0) && (vga_y <= HEIGHT)) ? 4'b1111 : 4'b0000;
+
+    wire [9:0] row;
+    wire [9:0] col;
+    wire [9:0] y;
+    wire [9:0] x;
+    wire [7:0] chr;
+    wire pix;
+    
+    assign row = vga_y >> 5;
+    assign col = vga_x >> 4;
+    assign y = (vga_y >> 1) & 15;
+    assign x = (vga_x >> 1) & 7;
+    assign chr = name[row*40+col];
+    assign pix = font[(chr-32)*16+y] [7-x];
+
+    wire [3:0] home;
+    assign home = pix ? 4'b1111 : 4'b0000;
         
     // Face the monster
-    wire face_monster;
-    assign face_monster =
-        ((vga_x >= 0) && (vga_x <= WIDTH) && (vga_y >=0) && (vga_y <= HEIGHT)) ? 4'b1111 : 4'b0000;
+    wire [3:0] face_monster;
+    assign face_monster [3:0] = 4'b1111;
     
     // ball a
     wire [15:0] ball_a_x;
@@ -328,26 +346,47 @@ module vgaSystem(
     wire [15:0] movingBar_y;
     wire [15:0] movingBar_radius;
     wire [15:0] movingBar_height;
-    wire movingbar_stop = 1;
-    reg movingbar_active = 0;
+    wire movingbar_overtime;
+    reg movingbar_rst;
+    wire sp_movingbar_rst;
+    singlePulser Movingbar_rst(.in(movingbar_rst), .clk(clk), .out(sp_movingbar_rst));
+    
     movingbar #(.R(2), .VELOCITY(5), .I_X(15)) Moving_Bar(
         .i_clk(clk),
         .i_ani_stb(pix_stb),
         .i_animate(animate),
-        .i_space_key(SPACE_KEY),
-        .i_active(movingbar_active),
+//        .i_space_key(SPACE_KEY),
+        .i_rst(sp_movingbar_rst),
         .o_cx(movingBar_x),
         .o_cy(movingBar_y),
         .o_r(movingBar_radius),
         .o_h(movingBar_height),
-        .o_stop(movingbar_stop)
+        .o_overtime(movingbar_overtime)
     );
     wire [3:0] movingBar;
     assign movingBar = 
         ((vga_x >= movingBar_x - movingBar_radius)
         & (vga_x <= movingBar_x + movingBar_radius)
         & (vga_y >= movingBar_y) & (vga_y <= movingBar_y + 150)) ? 4'b0111 : 4'b0000;
-        
+    // instantiate BeeSprite code
+    wire [1:0] BeeSpriteOn; // 1=on, 0=off
+    wire [7:0] dout; // pixel value from Bee.mem
+    BeeSprite BeeDisplay (.i_clk(clk),.xx(vga_x),.yy(vga_y),.aactive(active),
+                          .BSpriteOn(BeeSpriteOn),.dataout(dout));
+  
+    // load colour palette
+    reg [7:0] palette [0:191]; // 8 bit values from the 192 hex entries in the colour palette
+    reg [7:0] COL = 0; // background colour palette value
+    initial begin
+        $readmemh("pal24bitmaybe.mem", palette); // load 192 hex values into "palette"
+    end
+    //draw a monster
+    wire [3:0] monsterRed;
+    wire [3:0] monsterGreen;
+    wire [3:0] monsterBlue;
+    assign monsterRed[3:0] = (active & BeeSpriteOn) ? (palette[(dout*3)])>>4 : 4'b0000;
+    assign monsterGreen[3:0] = (active & BeeSpriteOn) ? (palette[(dout*3)+1])>>4 : 4'b0000;
+    assign monsterBlue[3:0] = (active & BeeSpriteOn) ? (palette[(dout*3)+2])>>4 : 4'b0000;    
     // state
     reg [15:0] state = 16'h00; 
     reg is_monster_dead = monster_remain_hp==0 ? 1 : 0;
@@ -384,25 +423,7 @@ module vgaSystem(
         if(start_attack_timer==1) monster_attack_timer <= monster_attack_timer + 4'd1;
         else monster_attack_timer <= 0;
     end
-    // instantiate BeeSprite code
-    wire [1:0] BeeSpriteOn; // 1=on, 0=off
-    wire [7:0] dout; // pixel value from Bee.mem
-    BeeSprite BeeDisplay (.i_clk(clk),.xx(vga_x),.yy(vga_y),.aactive(active),
-                          .BSpriteOn(BeeSpriteOn),.dataout(dout));
-  
-    // load colour palette
-    reg [7:0] palette [0:191]; // 8 bit values from the 192 hex entries in the colour palette
-    reg [7:0] COL = 0; // background colour palette value
-    initial begin
-        $readmemh("pal24bitmaybe.mem", palette); // load 192 hex values into "palette"
-    end
-    //draw a monster
-    wire [3:0] monsterRed;
-    wire [3:0] monsterGreen;
-    wire [3:0] monsterBlue;
-    assign monsterRed[3:0] = (active & BeeSpriteOn) ? (palette[(dout*3)])>>4 : 4'b0000;
-    assign monsterGreen[3:0] = (active & BeeSpriteOn) ? (palette[(dout*3)+1])>>4 : 4'b0000;
-    assign monsterBlue[3:0] = (active & BeeSpriteOn) ? (palette[(dout*3)+2])>>4 : 4'b0000;
+    
     always @(posedge clk)
     begin
         case(state)
@@ -416,51 +437,48 @@ module vgaSystem(
             end
             16'h10: begin // FACE THE MONSTER
                 // component to render
-                reg_vgaRed <= face_monster
-                | monsterRed;
-                reg_vgaGreen <= face_monster
-                | monsterGreen;
-                reg_vgaBlue <= face_monster
-                | monsterBlue;
+                reg_vgaRed <= monsterRed;
+                reg_vgaGreen <= monsterGreen;
+                reg_vgaBlue <= monsterBlue;
                 // if player select FIGHT
                 if(ENTER_KEY==1) 
                 begin
                     state <= 16'h20;
-                    movingbar_active <= 1;
+                    movingbar_rst <= 1;
                 end
             end
             16'h20: begin // PLAYER ATTACKS MONSTER
+                movingbar_rst <= 0;
                 // component to render
                 reg_vgaRed <= movingBar 
                 | frameFight 
                 | scoreBarYellow 
                 | scoreBarOrange
                 | (scoreBarBlue & 4'b1000)
-                | monster_hp_bar;
+                | monster_hp_bar
+                | monsterRed;
                 
                 reg_vgaGreen <= frameFight 
                 | scoreBarYellow 
                 | scoreBarGreen 
                 | (scoreBarOrange & 4'b1010)
                 | (scoreBarBlue & 4'b1100)
-                | monster_hp_bar;
+                | monster_hp_bar
+                | monsterGreen;
                 
                 reg_vgaBlue <= frameFight
                 | (scoreBarBlue & 4'b1111)
-                | monster_hp_bar;
+                | monster_hp_bar
+                | monsterBlue;
                 
-                // if moving bar is gone, next state: MONSTER ATTACKS PLAYER
-                if(is_monster_dead==1) 
-                begin
-                    movingbar_active <= 0;
-                    state <= 16'h00; // back to HOME SCREEN
-                end
-                
-                if(movingbar_stop==1) 
+                if(SPACE_KEY==1)
                 begin
                     state <= 16'h30;
-                    movingbar_active <= 0;
                 end
+                
+                if(is_monster_dead==1) state <= 16'h00; // back to HOME SCREEN
+                // if moving bar is gone, next state: MONSTER ATTACKS PLAYER
+                if(movingbar_overtime==1) state <= 16'h30; // go to MONSTER ATTACKS PLAYER
             end
             16'h30: begin // MONSTER ATTACKS PLAYER
                 // component to render
@@ -468,17 +486,17 @@ module vgaSystem(
                 | b_b 
                 | heart 
                 | frameEscape 
-                // | frameFight
-                | monster_hp_bar;
+                | monster_hp_bar
+                | monsterRed;
                 reg_vgaGreen <= b_a 
                 | b_b 
                 | frameEscape 
-                // | frameFight
-                | player_hp_bar;
+                | player_hp_bar
+                | monsterGreen;
                 reg_vgaBlue <= b_a 
                 | b_b 
-                // | frameEscape 
-                | frameFight;
+                | frameEscape
+                | monsterBlue;
                 
                 if(is_player_dead==1) state <= 16'h00; // back to HOME SCREEN
                 // after 5 seconds, next state: FACE THE MONSTER

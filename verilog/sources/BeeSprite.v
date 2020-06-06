@@ -20,8 +20,8 @@ module BeeSprite(
     BeeRom BeeVRom (.i_addr(address),.i_clk2(i_clk),.o_data(dataout));
     
     // setup character positions and sizes
-    reg [9:0] BeeX = 50; // Bee X start position
-    reg [8:0] BeeY = 50; // Bee Y start position
+    reg [9:0] BeeX = 300; // Bee X start position
+    reg [8:0] BeeY = 100; // Bee Y start position
     localparam BeeWidth = 26; // Bee width in pixels 34
     localparam BeeHeight = 37; // Bee height in pixels 27
     

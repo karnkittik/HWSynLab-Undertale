@@ -39,45 +39,44 @@ module movingbar #(
     input wire i_clk, // base clock
     input wire i_ani_stb, // animation clock: pixel clock is 1 pix/frame
     input wire i_animate, // animate when input is high
-    input wire i_space_key,
-    input wire i_active,
+//    input wire i_space_key,
+    input wire i_rst,
     output wire [15:0] o_cx,
     output wire [15:0] o_cy,
     output wire [15:0] o_r,
     output wire [15:0] o_h,
-    output wire o_stop
+    output wire o_overtime
     );
     
     reg [15:0] x = I_X+FX;
     reg x_dir = IX_DIR;
-    reg stop = 0;
+    reg overtime = 0;
     
     assign o_cx = x;
     assign o_cy = FY ;
     assign o_r = R;
     assign o_h = F_HEIGHT;
-    assign o_stop = stop;
+//    assign o_overtime = overtime;    
+    singlePulser Overtime_sp(.in(overtime), .clk(i_clk), .out(o_overtime));
+
+//    always @(posedge i_clk)
+//    begin
+//        if (i_space_key == 1) overtime <= 1;
+//    end
     
     always @(posedge i_clk)
     begin
-        if (i_space_key == 1) stop <= 1;
-    end
-    
-    always @(posedge i_clk)
-    begin
-        if(i_active==0)
+        if(i_rst==1)
         begin
             x <= I_X+FX;
+            overtime <= 0;
         end
         else
         begin
             if(i_animate && i_ani_stb)
             begin
-                x <= x+VELOCITY;
-                if(x > FX+F_WIDTH-R) 
-                begin
-                    stop <= 1;
-                end
+                if(x <= FX+F_WIDTH-R) x <= x+VELOCITY;
+                else overtime <= 1;
             end
         end
     end
