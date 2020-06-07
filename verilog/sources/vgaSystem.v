@@ -56,9 +56,10 @@ module vgaSystem(
     wire active;
 //    clock_divider clock_divider_draw(pix_stb, clk, 4);
     reg [15:0] cnt;
-    wire pix_stb; // ppu will take control of this
-    /*always @(posedge clk)
-        {pix_stb, cnt} <= cnt + 16'h4000;  // divide by 4: (2^16)/4 = 0x4000*/
+//    wire pix_stb; // ppu will take control of this
+    reg pix_stb; 
+    always @(posedge clk)
+        {pix_stb, cnt} <= cnt + 16'h4000;  // divide by 4: (2^16)/4 = 0x4000
     
     reg [31:0] cnt2;
     reg a_second_tick;
@@ -71,19 +72,19 @@ module vgaSystem(
         else cnt2 <= cnt2 + 1;
         
     // MEOW: use ppu timing instead
-    /*vga_controller vga_controller
-    (
-        .h_sync(Hsync),
-        .v_sync(Vsync),
-        .x(vga_x),
-        .y(vga_y),
-        .end_of_line(vga_endline),
-        .end_of_frame(vga_endframe),
-        .clk(clk),
-        .i_pix_stb(pix_stb),
-        .animate(animate),
-        .active(active)
-    );*/
+//    vga_controller vga_controller
+//    (
+//        .h_sync(Hsync),
+//        .v_sync(Vsync),
+//        .x(vga_x),
+//        .y(vga_y),
+//        .end_of_line(vga_endline),
+//        .end_of_frame(vga_endframe),
+//        .clk(clk),
+//        .i_pix_stb(pix_stb),
+//        .animate(animate),
+//        .active(active)
+//    );
     
     wire tx_idle;
     reg [7:0] tx_data;
@@ -162,34 +163,53 @@ module vgaSystem(
     
     reg [7:0] font [96*16-1:0];
     reg [7:0] name [15*40-1:0];
+    reg [7:0] menu_t [15*40-1:0];
 
     initial begin
         $readmemb("name.txt", name, 0, 5 * 40 - 1);
+        $readmemb("menu.mem", menu_t, 0, 5 * 40 - 1);
         $readmemb("font.txt", font, 0, 96 * 16 - 1);
     end
-    
     // Home Screen
 
-    wire [9:0] row;
-    wire [9:0] col;
-    wire [9:0] y;
-    wire [9:0] x;
-    wire [7:0] chr;
-    wire pix;
+    wire [9:0] row_h;
+    wire [9:0] col_h;
+    wire [9:0] y_h;
+    wire [9:0] x_h;
+    wire [7:0] chr_h;
+    wire pix_h;
     
-    assign row = vga_y >> 5;
-    assign col = vga_x >> 4;
-    assign y = (vga_y >> 1) & 15;
-    assign x = (vga_x >> 1) & 7;
-    assign chr = name[row*40+col];
-    assign pix = font[(chr-32)*16+y] [7-x];
+    assign row_h = vga_y >> 5;
+    assign col_h = vga_x >> 4;
+    assign y_h = (vga_y >> 1) & 15;
+    assign x_h = (vga_x >> 1) & 7;
+    assign chr_h = name[row_h*40+col_h];
+    assign pix_h = font[(chr_h-32)*16+y_h] [7-x_h];
 
     wire [3:0] home;
-    assign home = pix ? 4'b1111 : 4'b0000;
+    assign home = pix_h ? 4'b1111 : 4'b0000;
         
     // Face the monster
     wire [3:0] face_monster;
     assign face_monster [3:0] = 4'b1111;
+    
+    //menu text
+    wire [9:0] row_m;
+    wire [9:0] col_m;
+    wire [9:0] y_m;
+    wire [9:0] x_m;
+    wire [7:0] chr_m;
+    wire pix_m;
+    
+    assign row_m = vga_y >> 5;
+    assign col_m = vga_x >> 4;
+    assign y_m = (vga_y >> 1) & 15;
+    assign x_m = (vga_x >> 1) & 7;
+    assign chr_m = menu_t[row_m*40+col_m];
+    assign pix_m = font[(chr_m-32)*16+y_m] [7-x_m];
+
+    wire [3:0] menu;
+    assign menu = pix_m ? 4'b1111 : 4'b0000;
     
     // cursor
     //0 = FIGHT, 1 = ACT, 2 = ITEM, 3 = MERCY
@@ -212,11 +232,15 @@ module vgaSystem(
         .o_cr(cursor_radius)
     );
     wire [3:0] cursor;
-    wire [20:0] sq_cursor_x = (vga_x - cursor_position_x) * (vga_x - cursor_position_x);
-    wire [20:0] sq_cursor_y = (vga_y - cursor_position_y) * (vga_y - cursor_position_y);
-    wire [20:0] sq_cursor_radius = cursor_radius * cursor_radius;
     assign cursor = 
-        (sq_cursor_x + sq_cursor_y <= sq_cursor_radius) ? 4'b1111 : 4'b0000;
+        ( (( (vga_y >= -(2*vga_x) + cursor_position_y + (2*(cursor_position_x - cursor_radius))) 
+        & (vga_y >=   vga_x - cursor_position_x + cursor_position_y - (cursor_radius/2)) 
+        & (vga_x <= cursor_position_x))
+        | ( (vga_y >=  (2*vga_x) + cursor_position_y - (2*(cursor_position_x + cursor_radius))) 
+        & (vga_y >= - vga_x + cursor_position_x + cursor_position_y - (cursor_radius/2)) 
+        & (vga_x >= cursor_position_x)))
+        & (vga_y <= - vga_x + cursor_position_x + cursor_position_y + cursor_radius)
+        & (vga_y <=   vga_x - cursor_position_x + cursor_position_y + cursor_radius)) ? 4'b1111 : 4'b0000;
 
     // ball a
     wire [15:0] ball_a_x;
@@ -234,9 +258,9 @@ module vgaSystem(
         .o_r(ball_a_radius)
     );
     wire [3:0] b_a;
-    wire [20:0] sq_b_a_x = (vga_x - ball_a_x) * (vga_x - ball_a_x);
-    wire [20:0] sq_b_a_y = (vga_y - ball_a_y) * (vga_y - ball_a_y);
-    wire [20:0] sq_r_a = ball_a_radius * ball_a_radius;
+    wire [31:0] sq_b_a_x = (vga_x - ball_a_x) * (vga_x - ball_a_x);
+    wire [31:0] sq_b_a_y = (vga_y - ball_a_y) * (vga_y - ball_a_y);
+    wire [31:0] sq_r_a = ball_a_radius * ball_a_radius;
     assign b_a = 
         (sq_b_a_x + sq_b_a_y <= sq_r_a) ? 4'b1111 : 4'b0000;
     // ball b
@@ -255,9 +279,9 @@ module vgaSystem(
         .o_r(ball_b_radius)
     );
     wire [3:0] b_b;
-    wire [20:0] sq_b_b_x = (vga_x - ball_b_x) * (vga_x - ball_b_x);
-    wire [20:0] sq_b_b_y = (vga_y - ball_b_y) * (vga_y - ball_b_y);
-    wire [20:0] sq_r_b = ball_b_radius * ball_b_radius;
+    wire [31:0] sq_b_b_x = (vga_x - ball_b_x) * (vga_x - ball_b_x);
+    wire [31:0] sq_b_b_y = (vga_y - ball_b_y) * (vga_y - ball_b_y);
+    wire [31:0] sq_r_b = ball_b_radius * ball_b_radius;
     assign b_b = 
         (sq_b_b_x + sq_b_b_y <= sq_r_b) ? 4'b1111 : 4'b0000;
     // ball c
@@ -276,9 +300,9 @@ module vgaSystem(
         .o_r(ball_c_radius)
     );
     wire [3:0] b_c;
-    wire [20:0] sq_b_c_x = (vga_x - ball_c_x) * (vga_x - ball_c_x);
-    wire [20:0] sq_b_c_y = (vga_y - ball_c_y) * (vga_y - ball_c_y);
-    wire [20:0] sq_r_c = ball_c_radius * ball_c_radius;
+    wire [31:0] sq_b_c_x = (vga_x - ball_c_x) * (vga_x - ball_c_x);
+    wire [31:0] sq_b_c_y = (vga_y - ball_c_y) * (vga_y - ball_c_y);
+    wire [31:0] sq_r_c = ball_c_radius * ball_c_radius;
     // assign b_c = 
     //     (sq_b_b_x + sq_b_b_y <= sq_r_b) ? 4'b1111 : 4'b0000;
     assign b_c = 
@@ -292,7 +316,7 @@ module vgaSystem(
     wire [15:0] ball_g_radius;
     reg [15:0] ball_g_heal = 16'd50;
     reg ball_g_rst = 0;
-    ball #(.R(8), .X_ENABLE(0), .Y_ENABLE(0), .VELOCITY(3), .C_X(100), .C_Y(110) ) ball_g(
+    ball #(.R(8), .X_ENABLE(1), .Y_ENABLE(1), .VELOCITY(3), .C_X(0), .C_Y(75) ) ball_g(
         .i_clk(clk),
         .i_ani_stb(pix_stb),
         .i_animate(animate),
@@ -302,9 +326,9 @@ module vgaSystem(
         .o_r(ball_g_radius)
     );
     wire [3:0] b_g;
-    wire [20:0] sq_b_g_x = (vga_x - ball_g_x) * (vga_x - ball_g_x);
-    wire [20:0] sq_b_g_y = (vga_y - ball_g_y) * (vga_y - ball_g_y);
-    wire [20:0] sq_r_g = (ball_g_radius-2) * (ball_g_radius-5);
+    wire [31:0] sq_b_g_x = (vga_x - ball_g_x) * (vga_x - ball_g_x);
+    wire [31:0] sq_b_g_y = (vga_y - ball_g_y) * (vga_y - ball_g_y);
+    wire [31:0] sq_r_g = (ball_g_radius-2) * (ball_g_radius-5);
     assign b_g = 
         ( (vga_y >= - vga_x + ball_g_x + ball_g_y - ball_g_radius) 
         & (vga_y >=   vga_x - ball_g_x + ball_g_y - ball_g_radius)
@@ -330,9 +354,9 @@ module vgaSystem(
          .o_r(h_radius)
      );
      wire [3:0] heart;
-     wire [20:0] sq_h_x = (vga_x - h_x) * (vga_x - h_x);
-     wire [20:0] sq_h_y = (vga_y - h_y) * (vga_y - h_y);
-     wire [20:0] sq_h_r = h_radius * h_radius;
+     wire [31:0] sq_h_x = (vga_x - h_x) * (vga_x - h_x);
+     wire [31:0] sq_h_y = (vga_y - h_y) * (vga_y - h_y);
+     wire [31:0] sq_h_r = h_radius * h_radius;
     //  assign heart = 
     //      (sq_h_x + sq_h_y <= sq_h_r) ? 4'b1111 : 4'b0000;
     assign heart = 
@@ -443,7 +467,7 @@ module vgaSystem(
     wire sp_movingbar_rst;
     singlePulser Movingbar_rst(.in(movingbar_rst), .clk(clk), .out(sp_movingbar_rst));
     
-    movingbar #(.R(2), .VELOCITY(5), .I_X(15)) Moving_Bar(
+    movingbar #(.R(2), .VELOCITY(8), .I_X(15)) Moving_Bar(
         .i_clk(clk),
         .i_ani_stb(pix_stb),
         .i_animate(animate),
@@ -461,6 +485,7 @@ module vgaSystem(
         & (vga_x <= movingBar_x + movingBar_radius)
         & (vga_y >= movingBar_y) & (vga_y <= movingBar_y + 150)) ? 4'b0111 : 4'b0000;
     // instantiate MonsterSprite code
+    wire [1:0] MonsterSpriteOn;
     wire [1:0] MSpriteOn; // 1=on, 0=off
     wire [7:0] dout; // pixel value from Monster.mem
     MonsterSprite MonsterDisplay (.i_clk(clk),.xx(vga_x),.yy(vga_y),.aactive(active),
@@ -479,7 +504,7 @@ module vgaSystem(
     wire [3:0] monsterBlue;
     assign monsterRed[3:0] = (active & MonsterSpriteOn) ? (palette[(dout*3)])>>4 : 4'b0000;
     assign monsterGreen[3:0] = (active & MonsterSpriteOn) ? (palette[(dout*3)+1])>>4 : 4'b0000;
-    assign monsterBlue[3:0] = (active & MonsterSpriteOn) ? (palette[(dout*3)+2])>>4 : 4'b0000;    
+    assign monsterBlue[3:0] = (active & MonsterSpriteOn) ? (palette[(dout*3)+2])>>4 : 4'b0000;
     // state
     reg [15:0] state = 16'h000F; 
     
@@ -500,18 +525,15 @@ module vgaSystem(
         else monster_attack_timer <= 0;
     end
     
-    assign led[15] = a_second_tick;
-    assign led[13:10] = monster_attack_timer;
-    assign led[9:0] = player_remain_hp;
-    
     //collision
-    reg ball_a_heart  = 0;
-    reg ball_b_heart  = 0;
-    reg ball_g_heart  = 0;
-    //main
+    reg ball_a_heart = 0;
+    reg ball_b_heart = 0;
+    reg ball_g_heart = 0;
+    //ppu
     wire [3:0] ppured;
     wire [3:0] ppugreen;
     wire [3:0] ppublue;
+    //main
     always @(posedge clk)
     begin
         case(state)
@@ -527,15 +549,21 @@ module vgaSystem(
                 reg_vgaRed <= ppured;
                 reg_vgaGreen <= ppugreen;
                 reg_vgaBlue <= ppublue;
+//                reg_vgaRed <= home;
+//                reg_vgaGreen <= home;
+//                reg_vgaBlue <= home;
                 // if ENTER, next state: MONSTER FOUND
                 if(ENTER_KEY==1) state <= 16'h0001;
             end
             16'h0010: begin // FACE THE MONSTER
                 // component to render
                 reg_vgaRed <= monsterRed 
+                | menu
                 | cursor;
-                reg_vgaGreen <= monsterGreen;
-                reg_vgaBlue <= monsterBlue;
+                reg_vgaGreen <= monsterGreen
+                | menu;
+                reg_vgaBlue <= monsterBlue
+                | menu;
                 // if player select FIGHT
                 if(cursor_position==2'd0 && ENTER_KEY==1) state <= 16'h002F;
                 if(cursor_position==2'd3 && ENTER_KEY==1) state <= 16'h000F;
@@ -564,10 +592,10 @@ module vgaSystem(
                 
                 if(SPACE_KEY==1)
                 begin
-                    if(movingBar_x >= 305 & movingBar_x <= 325) player_damage = 16'd1000;
-                    else if(movingBar_x >= 220 & movingBar_x <= 395) player_damage = 16'd500;
-                    else if(movingBar_x >= 160 & movingBar_x <= 455) player_damage = 16'd100;
-                    else if(movingBar_x >= 115 & movingBar_x <= 500) player_damage = 16'd50;
+                    if(movingBar_x >= 305 & movingBar_x <= 325) player_damage = 16'd100;
+                    else if(movingBar_x >= 220 & movingBar_x <= 395) player_damage = 16'd50;
+                    else if(movingBar_x >= 160 & movingBar_x <= 455) player_damage = 16'd10;
+                    else if(movingBar_x >= 115 & movingBar_x <= 500) player_damage = 16'd5;
                     else player_damage = 16'd0;
                     if(monster_remain_hp <= player_damage) state <= 16'h000F;
                     else 
@@ -581,19 +609,19 @@ module vgaSystem(
             end
             16'h0030: begin // MONSTER ATTACKS PLAYER
                 //collision
-                if((b_a==4'b1111) & (heart==4'b1111) & (~ball_a_heart)) 
+                if((b_a==4'b1111) && (heart==4'b1111) && (ball_a_heart==0)) 
                 begin
                     ball_a_heart <= 1;
                     if(player_remain_hp <= ball_a_damage) state <= 16'h000F; // PLAYER DIED -> back to HOME SCREEN
                     else player_remain_hp <= player_remain_hp - ball_a_damage;
                 end
-                if((b_b==4'b1111) & (heart==4'b1111) & (~ball_b_heart)) 
+                if((b_b==4'b1111) && (heart==4'b1111) && (ball_b_heart==0)) 
                 begin
                     ball_b_heart <= 1;
                     if(player_remain_hp <= ball_b_damage) state <= 16'h000F; // PLAYER DIED -> back to HOME SCREEN
                     else player_remain_hp <= player_remain_hp - ball_b_damage;
                 end
-                if((b_g==4'b1111) & (heart==4'b1111) & (~ball_g_heart)) 
+                if((b_g==4'b1111) && (heart==4'b1111) && (ball_g_heart==0)) 
                 begin
                     ball_g_heart <= 1;
                     if(player_remain_hp <= player_total_hp - ball_g_heal) player_remain_hp <= player_remain_hp + ball_g_heal; // PLAYER DIED -> back to HOME SCREEN
@@ -692,6 +720,11 @@ module vgaSystem(
         endcase
     end
    
+    //debug
+    assign led[15] = a_second_tick;
+    assign led[13:11] = {ball_a_heart, ball_b_heart, ball_g_heart};
+//    assign led[13:10] = monster_attack_timer;
+//    assign led[9:0] = player_remain_hp;
     // heart equation BUT dose not work
 //    wire [31:0] sq_h_x = (vga_x - h_x) * (vga_x - h_x);
 //    wire [31:0] sq_h_y = (vga_y - h_y) * (vga_y - h_y);
@@ -722,8 +755,9 @@ module vgaSystem(
     
     cpu8080 cpu(addr, data, readmem, writemem, readio, writeio, intr, inta, waitr, cpureset, counter[0]);
     
+    wire somethingelse;
     ppu ppu(addr, data, ppusel, readmem, writemem, ppured, ppugreen, ppublue, Hsync, Vsync, 
-            vga_x, vga_y, animate, active, pix_stb, counter[0]);
+            vga_x, vga_y, animate, active, somethingelse, counter[0]);
     
     rom rom(addr, data, romsel & readmem);
     
@@ -761,14 +795,14 @@ module vgaSystem(
         //12'h005: iodatao <= sw[15:8];
         
         // 6-7: led
-        12'h006: begin
-            //if (writemem) led[7:0] <= data;
-            iodatao <= led[7:0];
-        end
-        12'h007: begin
-            //if (writemem) led[15:8] <= data;
-            iodatao <= led[15:8];
-        end
+//        12'h006: begin
+//            //if (writemem) led[7:0] <= data;
+//            iodatao <= led[7:0];
+//        end
+//        12'h007: begin
+//            //if (writemem) led[15:8] <= data;
+//            iodatao <= led[15:8];
+//        end
         
         // 8-B: seven segment
         12'h008: begin

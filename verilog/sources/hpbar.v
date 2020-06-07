@@ -42,7 +42,7 @@ module hpbar #(
    
     assign o_lt_x = lt_x;
     assign o_lt_y = lt_y;
-    assign o_br_x = 16'd0 + FX + (F_WIDTH*i_remain_hp/i_total_hp);
+    assign o_br_x = 16'd0 + FX + (F_WIDTH*(i_remain_hp/i_total_hp));
     assign o_br_y = br_y;
 
 endmodule
