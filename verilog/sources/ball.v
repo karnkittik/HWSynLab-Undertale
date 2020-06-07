@@ -66,6 +66,8 @@ module ball #(
         begin
             x <= C_X+FX;
             y <= C_Y+FY;
+            x_dir <= IX_DIR;
+            y_dir <= IY_DIR;
         end
         begin     
             if(i_animate && i_ani_stb)

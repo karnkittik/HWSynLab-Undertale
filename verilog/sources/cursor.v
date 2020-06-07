@@ -21,7 +21,7 @@
 
 
 module cursor#(
-    MY = 415, // coordinate y of cursor
+    MY = 430, // coordinate y of cursor
     R = 10 // radius of cursor
     )
     (
@@ -35,8 +35,8 @@ module cursor#(
     wire [15:0] position [3:0];
     assign position[0] = 16'd65; //fight
     assign position[1] = 16'd205; //action
-    assign position[2] = 16'd345; //item
-    assign position[3] = 16'd485; //mercy
+    assign position[2] = 16'd335; //item
+    assign position[3] = 16'd480; //mercy
     
     assign o_cy = MY;
     assign o_cr = R;
