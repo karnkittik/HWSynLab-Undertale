@@ -56,9 +56,9 @@ module vgaSystem(
     wire active;
 //    clock_divider clock_divider_draw(pix_stb, clk, 4);
     reg [15:0] cnt;
-    reg pix_stb;
-    always @(posedge clk)
-        {pix_stb, cnt} <= cnt + 16'h4000;  // divide by 4: (2^16)/4 = 0x4000
+    wire pix_stb; // ppu will take control of this
+    /*always @(posedge clk)
+        {pix_stb, cnt} <= cnt + 16'h4000;  // divide by 4: (2^16)/4 = 0x4000*/
     
     reg [31:0] cnt2;
     reg a_second_tick;
@@ -70,7 +70,8 @@ module vgaSystem(
         end
         else cnt2 <= cnt2 + 1;
         
-    vga_controller vga_controller
+    // MEOW: use ppu timing instead
+    /*vga_controller vga_controller
     (
         .h_sync(Hsync),
         .v_sync(Vsync),
@@ -82,7 +83,7 @@ module vgaSystem(
         .i_pix_stb(pix_stb),
         .animate(animate),
         .active(active)
-    );
+    );*/
     
     wire tx_idle;
     reg [7:0] tx_data;
@@ -368,15 +369,15 @@ module vgaSystem(
         & (vga_y>=lt_y_player_hp_bar) & (vga_y<=br_y_player_hp_bar)) ? 4'b1111 : 4'b0000;
 
     //monster bar
-    reg [15:0] monster_total_hp = 16'd2000;
-    reg [15:0] monster_remain_hp = 16'd2000;
+    reg [15:0] monster_total_hp = 16'd200;
+    reg [15:0] monster_remain_hp = 16'd200;
     wire [15:0] lt_x_monster_hp_bar;
     wire [15:0] lt_y_monster_hp_bar;
     wire [15:0] br_x_monster_hp_bar;
     wire [15:0] br_y_monster_hp_bar;
     wire [15:0] monster_hp_bar_width;
     wire [15:0] monster_hp_bar_height;
-    hpbar #(.FX(50), .FY(420), .F_HEIGHT(8), .F_WIDTH(400)) Monster_hp_bar(
+    hpbar #(.FX(50), .FY(420), .F_HEIGHT(8), .F_WIDTH(250)) Monster_hp_bar(
     .i_clk(clk),
     .i_total_hp(monster_total_hp),
     .i_remain_hp(monster_remain_hp),
@@ -480,7 +481,7 @@ module vgaSystem(
     assign monsterGreen[3:0] = (active & BeeSpriteOn) ? (palette[(dout*3)+1])>>4 : 4'b0000;
     assign monsterBlue[3:0] = (active & BeeSpriteOn) ? (palette[(dout*3)+2])>>4 : 4'b0000;    
     // state
-    reg [15:0] state = 16'h0F; 
+    reg [15:0] state = 16'h000F; 
     
     // RGB
     reg [3:0] reg_vgaRed = 4'b0000;
@@ -508,28 +509,38 @@ module vgaSystem(
     reg ball_b_heart  = 0;
     reg ball_g_heart  = 0;
     //main
+    wire [3:0] ppured;
+    wire [3:0] ppugreen;
+    wire [3:0] ppublue;
     always @(posedge clk)
     begin
         case(state)
-            16'h00: begin // HOME SCREEN
-                // component to render
-                reg_vgaRed <= home;
-                reg_vgaGreen <= home;
-                reg_vgaBlue <= home;
-                // if ENTER, next state: MONSTER FOUND
-                if(ENTER_KEY==1) state <= 16'h1F;
+            16'h0001: begin // cat walk state
+                reg_vgaRed <= ppured;
+                reg_vgaGreen <= ppugreen;
+                reg_vgaBlue <= ppublue;
+                if(ENTER_KEY==1) state <= 16'h001F;
             end
-            16'h10: begin // FACE THE MONSTER
+            
+            16'h0000: begin // HOME SCREEN // hijacked by ppu
+                // component to render
+                reg_vgaRed <= ppured;
+                reg_vgaGreen <= ppugreen;
+                reg_vgaBlue <= ppublue;
+                // if ENTER, next state: MONSTER FOUND
+                if(ENTER_KEY==1) state <= 16'h0001;
+            end
+            16'h0010: begin // FACE THE MONSTER
                 // component to render
                 reg_vgaRed <= monsterRed 
                 | cursor;
                 reg_vgaGreen <= monsterGreen;
                 reg_vgaBlue <= monsterBlue;
                 // if player select FIGHT
-                if(cursor_position==2'd0 && ENTER_KEY==1) state <= 16'h2F;
-                if(cursor_position==2'd3 && ENTER_KEY==1) state <= 16'h0F;
+                if(cursor_position==2'd0 && ENTER_KEY==1) state <= 16'h002F;
+                if(cursor_position==2'd3 && ENTER_KEY==1) state <= 16'h000F;
             end
-            16'h20: begin // PLAYER ATTACKS MONSTER
+            16'h0020: begin // PLAYER ATTACKS MONSTER
                 // component to render
                 reg_vgaRed <= movingBar 
                 | frameFight 
@@ -558,28 +569,28 @@ module vgaSystem(
                     else if(movingBar_x >= 160 & movingBar_x <= 455) player_damage = 16'd100;
                     else if(movingBar_x >= 115 & movingBar_x <= 500) player_damage = 16'd50;
                     else player_damage = 16'd0;
-                    if(monster_remain_hp <= player_damage) state <= 16'h0F;
+                    if(monster_remain_hp <= player_damage) state <= 16'h000F;
                     else 
                     begin
                         monster_remain_hp <= monster_remain_hp - player_damage;
-                        state <= 16'h3F;
+                        state <= 16'h003F;
                     end 
                 end
                 // if moving bar is gone, next state: MONSTER ATTACKS PLAYER
-                if(movingbar_overtime==1) state <= 16'h3F; // go to MONSTER ATTACKS PLAYER
+                if(movingbar_overtime==1) state <= 16'h003F; // go to MONSTER ATTACKS PLAYER
             end
-            16'h30: begin // MONSTER ATTACKS PLAYER
+            16'h0030: begin // MONSTER ATTACKS PLAYER
                 //collision
                 if((b_a==4'b1111) & (heart==4'b1111) & (~ball_a_heart)) 
                 begin
                     ball_a_heart <= 1;
-                    if(player_remain_hp <= ball_a_damage) state <= 16'h0F; // PLAYER DIED -> back to HOME SCREEN
+                    if(player_remain_hp <= ball_a_damage) state <= 16'h000F; // PLAYER DIED -> back to HOME SCREEN
                     else player_remain_hp <= player_remain_hp - ball_a_damage;
                 end
                 if((b_b==4'b1111) & (heart==4'b1111) & (~ball_b_heart)) 
                 begin
                     ball_b_heart <= 1;
-                    if(player_remain_hp <= ball_b_damage) state <= 16'h0F; // PLAYER DIED -> back to HOME SCREEN
+                    if(player_remain_hp <= ball_b_damage) state <= 16'h000F; // PLAYER DIED -> back to HOME SCREEN
                     else player_remain_hp <= player_remain_hp - ball_b_damage;
                 end
                 if((b_g==4'b1111) & (heart==4'b1111) & (~ball_g_heart)) 
@@ -614,48 +625,48 @@ module vgaSystem(
                 if(monster_attack_timer==4'd6)
                 begin
                     start_attack_timer <= 0;
-                    state <= 16'h1F;
+                    state <= 16'h001F;
                 end
             end
             
             //reset states
-            16'h0F: begin
+            16'h000F: begin
                 //begin reset
                 player_remain_hp <= player_total_hp;
                 monster_remain_hp <= monster_total_hp;
                 //////////////
-                state <= 16'h0E;
+                state <= 16'h000E;
             end
-            16'h0E: begin
+            16'h000E: begin
                 //end reset
                 //////////////
-                state <= 16'h00;
+                state <= 16'h0000;
             end
-            16'h1F: begin
+            16'h001F: begin
                 //begin reset
                 cursor_position_rst <= 1;
                 //////////////
-                state <= 16'h1E;
+                state <= 16'h001E;
             end
-            16'h1E: begin
+            16'h001E: begin
                 //end reset
                 cursor_position_rst <= 0;
                 //////////////
-                state <= 16'h10;
+                state <= 16'h0010;
             end
-            16'h2F: begin
+            16'h002F: begin
                 //begin reset
                 movingbar_rst <= 1;
                 //////////////
-                state <= 16'h2E;
+                state <= 16'h002E;
             end
-            16'h2E: begin
+            16'h002E: begin
                 //end reset
                 movingbar_rst <= 0;
                 //////////////
-                state <= 16'h20;
+                state <= 16'h0020;
             end
-            16'h3F: begin
+            16'h003F: begin
                 //begin reset
                 ball_a_heart <= 0;
                 ball_b_heart <= 0;
@@ -666,9 +677,9 @@ module vgaSystem(
                 ball_g_rst <= 1;
                 heart_rst <= 1;
                 //////////////
-                state <= 16'h3E;
+                state <= 16'h003E;
             end
-            16'h3E: begin
+            16'h003E: begin
                 //end reset
                 ball_a_rst <= 0;
                 ball_b_rst <= 0;
@@ -676,7 +687,7 @@ module vgaSystem(
                 ball_g_rst <= 0;
                 heart_rst <= 0;
                 //////////////
-                state <= 16'h30;
+                state <= 16'h0030;
             end
         endcase
     end
@@ -692,4 +703,161 @@ module vgaSystem(
 //        (cu_h_t1 <= cu_h_t2) ? 4'b1111 : 4'b0000;
     // assign led = counter;
     
+    reg [31:0] counter;
+    
+    wire [15:0] addr;
+    wire [7:0] data;
+    wire readmem;
+    wire writemem;
+    wire readio;
+    wire writeio;
+    wire intr;
+    wire inta;
+    wire waitr;
+    wire cpureset;
+    
+    wire ppusel;
+    wire romsel;
+    wire ramsel;
+    
+    cpu8080 cpu(addr, data, readmem, writemem, readio, writeio, intr, inta, waitr, cpureset, counter[0]);
+    
+    ppu ppu(addr, data, ppusel, readmem, writemem, ppured, ppugreen, ppublue, Hsync, Vsync, 
+            vga_x, vga_y, animate, active, pix_stb, counter[0]);
+    
+    rom rom(addr, data, romsel & readmem);
+    
+    ram ram(addr, data, ramsel, readmem, writemem, counter[0]);
+	
+	always @(posedge clk) counter <= counter + 1;
+	
+	reg [7:0] numl;
+	reg [7:0] numh;
+	reg [3:0] dot;
+	reg [3:0] dgten;
+	//sevenseg_controller sevenseg(seg, dp, an, numl, numh, dot, dgten, counter[15]);
+    
+    reg wlatch, alatch, slatch, dlatch;
+    reg [7:0] iodatao;
+    wire iosel;
+    assign data = (iosel & readmem) ? iodatao : 8'bz;
+    always @(negedge clk) begin
+    
+    if (wlatch == 0 && W_KEY == 1) wlatch = 1;
+    if (alatch == 0 && A_KEY == 1) alatch = 1;
+    if (slatch == 0 && S_KEY == 1) slatch = 1;
+    if (dlatch == 0 && D_KEY == 1) dlatch = 1;
+    
+    if (iosel) case (addr[11:0])
+        
+        // 0-3: counter
+        12'h000: iodatao <= counter[7:0];
+        12'h001: iodatao <= counter[15:8];
+        12'h002: iodatao <= counter[23:16];
+        12'h003: iodatao <= counter[31:24];
+        
+        // 4-5: switch
+        //12'h004: iodatao <= sw[7:0];
+        //12'h005: iodatao <= sw[15:8];
+        
+        // 6-7: led
+        12'h006: begin
+            //if (writemem) led[7:0] <= data;
+            iodatao <= led[7:0];
+        end
+        12'h007: begin
+            //if (writemem) led[15:8] <= data;
+            iodatao <= led[15:8];
+        end
+        
+        // 8-B: seven segment
+        12'h008: begin
+            if (writemem) numl <= data;
+            iodatao <= numl;
+        end
+        12'h009: begin
+            if (writemem) numh <= data;
+            iodatao <= numh;
+        end
+        12'h00A: begin
+            if (writemem) dot <= data[3:0];
+            iodatao <= {4'b0, dot};
+        end
+        12'h00B: begin
+            if (writemem) dgten <= data[3:0];
+            iodatao <= {4'b0, dgten};
+        end
+        
+        // C: button
+        //12'h00C: iodatao <= {3'b0, btnD, btnR, btnL, btnU, btnC};
+        12'h00C: iodatao <= {3'b0, slatch, dlatch, alatch, wlatch, 1'b0};
+        12'h00D: if (writemem) begin
+            slatch <= 0;
+            dlatch <= 0;
+            alatch <= 0;
+            wlatch <= 0;
+        end
+        12'h00F: iodatao <= state[7:0];
+        
+        default: iodatao <= 0;
+        
+    endcase
+    end
+    
+    assign romsel =                     addr[15:12] < 4;
+    assign ppusel = 4 <= addr[15:12] && addr[15:12] < 6;
+    assign iosel  = 6 <= addr[15:12] && addr[15:12] < 8;
+    assign ramsel = 8 <= addr[15:12];
+	
+    assign intr = 0;
+    assign waitr = 0;
+    assign cpureset = 0;
+    
+    // debug init
+    /*initial cpureset = 1;
+    always @(posedge clk) if (cpureset & counter[8]) cpureset <= 0;*/
+    
+endmodule
+
+module rom(addr, data, dataeno);
+
+    input [13:0] addr;
+    inout [7:0] data;
+    input dataeno;
+    
+    reg [7:0] datao;
+    
+    always @(addr) case (addr)
+    
+        `include "rom.mem" // get contents of memory
+        
+        default datao = 8'b01110110; // hlt
+    
+    endcase
+    
+    // Enable drive for data output
+    assign data = dataeno ? datao : 8'bz;
+    
+endmodule
+
+module ram(addr, data, select, read, write, clock);
+
+    input [14:0] addr;
+    inout [7:0] data;
+    input select;
+    input read;
+    input write;
+    input clock;
+    
+    reg [7:0] ramcore [32767:0]; // The ram store
+    reg [7:0] datao;
+    
+    always @(negedge clock) begin
+        if (select & write) ramcore[addr] <= data;
+        datao <= ramcore[addr];
+    end
+    
+    // Enable drive for data output
+    assign data = (select & read) ? datao : 8'bz;
+   
 endmodule
