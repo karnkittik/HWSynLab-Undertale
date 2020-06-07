@@ -460,26 +460,26 @@ module vgaSystem(
         ((vga_x >= movingBar_x - movingBar_radius)
         & (vga_x <= movingBar_x + movingBar_radius)
         & (vga_y >= movingBar_y) & (vga_y <= movingBar_y + 150)) ? 4'b0111 : 4'b0000;
-    // instantiate BeeSprite code
-    wire [1:0] BeeSpriteOn; // 1=on, 0=off
-    wire [7:0] dout; // pixel value from Bee.mem
-    BeeSprite BeeDisplay (.i_clk(clk),.xx(vga_x),.yy(vga_y),.aactive(active),
-                          .BSpriteOn(BeeSpriteOn),.dataout(dout));
+    // instantiate MonsterSprite code
+    wire [1:0] MSpriteOn; // 1=on, 0=off
+    wire [7:0] dout; // pixel value from Monster.mem
+    MonsterSprite MonsterDisplay (.i_clk(clk),.xx(vga_x),.yy(vga_y),.aactive(active),
+                          .MSpriteOn(MonsterSpriteOn),.dataout(dout));
   
     // load colour palette
     reg [7:0] palette [0:191]; // 8 bit values from the 192 hex entries in the colour palette
     reg [7:0] COL = 0; // background colour palette value
     initial begin
-        $readmemh("pal24bitmaybe.mem", palette); // load 192 hex values into "palette"
+        $readmemh("Pal24bitMonster.mem", palette); // load 192 hex values into "palette"
     end
     
     //draw a monster
     wire [3:0] monsterRed;
     wire [3:0] monsterGreen;
     wire [3:0] monsterBlue;
-    assign monsterRed[3:0] = (active & BeeSpriteOn) ? (palette[(dout*3)])>>4 : 4'b0000;
-    assign monsterGreen[3:0] = (active & BeeSpriteOn) ? (palette[(dout*3)+1])>>4 : 4'b0000;
-    assign monsterBlue[3:0] = (active & BeeSpriteOn) ? (palette[(dout*3)+2])>>4 : 4'b0000;    
+    assign monsterRed[3:0] = (active & MonsterSpriteOn) ? (palette[(dout*3)])>>4 : 4'b0000;
+    assign monsterGreen[3:0] = (active & MonsterSpriteOn) ? (palette[(dout*3)+1])>>4 : 4'b0000;
+    assign monsterBlue[3:0] = (active & MonsterSpriteOn) ? (palette[(dout*3)+2])>>4 : 4'b0000;    
     // state
     reg [15:0] state = 16'h000F; 
     
