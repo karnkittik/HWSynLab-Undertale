@@ -54,16 +54,6 @@ module vgaSystem(
     reg pix_stb; 
     always @(posedge clk)
         {pix_stb, cnt} <= cnt + 16'h4000;  // divide by 4: (2^16)/4 = 0x4000
-    
-    reg [31:0] cnt2;
-    reg a_second_tick;
-    always @(posedge clk)
-        if(cnt2 == 32'd50000000) 
-        begin
-            a_second_tick <= ~a_second_tick;
-            cnt2 <= 0;
-        end
-        else cnt2 <= cnt2 + 1;
         
     vga_controller vga_controller
     (
@@ -509,14 +499,9 @@ module vgaSystem(
     assign vgaBlue[3:0] = reg_vgaBlue;
     
     // timer
-    reg start_attack_timer = 0;
-    reg [3:0] monster_attack_timer = 4'd0;
-    
-    always @(posedge a_second_tick)
-    begin
-        if(start_attack_timer==1) monster_attack_timer <= monster_attack_timer + 4'd1;
-        else monster_attack_timer <= 0;
-    end
+    reg [47:0] cnt2 = 0;
+    parameter seconds = 6; // 6 seconds timer
+    reg [47:0] timer = 47'd100000000*seconds;
     
     //collision
     reg ball_a_heart = 0;
@@ -628,13 +613,13 @@ module vgaSystem(
                 | frameEscape
                 | monsterBlue;
                 
-                // after 5 seconds, next state: FACE THE MONSTER
-                start_attack_timer <= 1;
-                if(monster_attack_timer==4'd6)
+                // after 6 seconds, next state: FACE THE MONSTER
+                if(cnt2 == timer) 
                 begin
-                    start_attack_timer <= 0;
+                    cnt2 <= 0;
                     state <= 16'h001F;
                 end
+                else cnt2 <= cnt2 + 1;
             end
             
             //reset states
