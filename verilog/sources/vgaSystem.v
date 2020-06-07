@@ -238,14 +238,13 @@ module vgaSystem(
     wire [20:0] sq_r_a = ball_a_radius * ball_a_radius;
     assign b_a = 
         (sq_b_a_x + sq_b_a_y <= sq_r_a) ? 4'b1111 : 4'b0000;
-
     // ball b
     wire [15:0] ball_b_x;
     wire [15:0] ball_b_y;
     wire [15:0] ball_b_radius;
-    reg [15:0] ball_b_damage = 16'd50;
+    reg [15:0] ball_b_damage = 16'd80;
     reg ball_b_rst = 0;
-    ball #(.R(5), .X_ENABLE(0), .Y_ENABLE(1), .VELOCITY(3), .C_X(20), .C_Y(10) ) ball_b(
+    ball #(.R(7), .X_ENABLE(0), .Y_ENABLE(1), .VELOCITY(3), .C_X(20), .C_Y(10) ) ball_b(
         .i_clk(clk),
         .i_ani_stb(pix_stb),
         .i_animate(animate),
@@ -265,6 +264,31 @@ module vgaSystem(
         & (vga_y >=   vga_x - ball_b_x + ball_b_y - ball_b_radius)
         & (vga_y <= - vga_x + ball_b_x + ball_b_y + ball_b_radius)
         & (vga_y <=   vga_x - ball_b_x + ball_b_y + ball_b_radius)) ? 4'b1111 : 4'b0000;
+    // ball g
+    wire [15:0] ball_g_x;
+    wire [15:0] ball_g_y;
+    wire [15:0] ball_g_radius;
+    reg [15:0] ball_g_heal = 16'd50;
+    reg ball_g_rst = 0;
+    ball #(.R(8), .X_ENABLE(0), .Y_ENABLE(0), .VELOCITY(3), .C_X(100), .C_Y(110) ) ball_g(
+        .i_clk(clk),
+        .i_ani_stb(pix_stb),
+        .i_animate(animate),
+        .i_rst(ball_g_rst),
+        .o_cx(ball_g_x),
+        .o_cy(ball_g_y),
+        .o_r(ball_g_radius)
+    );
+    wire [3:0] b_g;
+    wire [20:0] sq_b_g_x = (vga_x - ball_g_x) * (vga_x - ball_g_x);
+    wire [20:0] sq_b_g_y = (vga_y - ball_g_y) * (vga_y - ball_g_y);
+    wire [20:0] sq_r_g = (ball_g_radius-2) * (ball_g_radius-5);
+    assign b_g = 
+        ( (vga_y >= - vga_x + ball_g_x + ball_g_y - ball_g_radius) 
+        & (vga_y >=   vga_x - ball_g_x + ball_g_y - ball_g_radius)
+        & (vga_y <= - vga_x + ball_g_x + ball_g_y + ball_g_radius)
+        & (vga_y <=   vga_x - ball_g_x + ball_g_y + ball_g_radius)
+        & ~(sq_b_g_x + sq_b_g_y <= sq_r_g)) ? 4'b1111 : 4'b0000;
      // heart
      wire [15:0] heart_x;
      wire [15:0] heart_y;
@@ -461,6 +485,7 @@ module vgaSystem(
     //collision
     reg ball_a_heart  = 0;
     reg ball_b_heart  = 0;
+    reg ball_g_heart  = 0;
     //main
     always @(posedge clk)
     begin
@@ -531,6 +556,12 @@ module vgaSystem(
                     if(player_remain_hp <= ball_b_damage) state <= 16'h0F; // PLAYER DIED -> back to HOME SCREEN
                     else player_remain_hp <= player_remain_hp - ball_b_damage;
                 end
+                if((b_g==4'b1111) & (heart==4'b1111) & (~ball_g_heart)) 
+                begin
+                    ball_g_heart <= 1;
+                    if(player_remain_hp <= player_total_hp - ball_g_heal) player_remain_hp <= player_remain_hp + ball_g_heal; // PLAYER DIED -> back to HOME SCREEN
+                    else player_remain_hp <= player_total_hp;
+                end
                 // component to render
                 reg_vgaRed <= (~ball_a_heart ? b_a : 4'b0000)  
                 | (~ball_b_heart ? b_b : 4'b0000)    
@@ -540,6 +571,7 @@ module vgaSystem(
                 | monsterRed;
                 reg_vgaGreen <= (~ball_a_heart ? b_a : 4'b0000)  
                 | (~ball_b_heart ? b_b : 4'b0000)  
+                | (~ball_g_heart ? b_g : 4'b0000)    
                 | frameEscape 
                 | player_hp_bar
                 | monsterGreen;
@@ -598,8 +630,10 @@ module vgaSystem(
                 //begin reset
                 ball_a_heart <= 0;
                 ball_b_heart <= 0;
+                ball_g_heart <= 0;
                 ball_a_rst <= 1;
                 ball_b_rst <= 1;
+                ball_g_rst <= 1;
                 heart_rst <= 1;
                 //////////////
                 state <= 16'h3E;
@@ -608,6 +642,7 @@ module vgaSystem(
                 //end reset
                 ball_a_rst <= 0;
                 ball_b_rst <= 0;
+                ball_g_rst <= 0;
                 heart_rst <= 0;
                 //////////////
                 state <= 16'h30;
