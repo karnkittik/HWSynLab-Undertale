@@ -354,7 +354,7 @@ module vgaSystem(
     wire [15:0] br_y_player_hp_bar;
     wire [15:0] player_hp_bar_width;
     wire [15:0] player_hp_bar_height;
-    hpbar #(.FX(50), .FY(400), .F_HEIGHT(12), .F_WIDTH(400)) Player_hp_bar(
+    hpbar #(.FX(50), .FY(400), .F_HEIGHT(12), .F_WIDTH(500)) Player_hp_bar(
     .i_clk(clk),
     .i_total_hp(player_total_hp),
     .i_remain_hp(player_remain_hp),
@@ -377,7 +377,7 @@ module vgaSystem(
     wire [15:0] br_y_monster_hp_bar;
     wire [15:0] monster_hp_bar_width;
     wire [15:0] monster_hp_bar_height;
-    hpbar #(.FX(50), .FY(420), .F_HEIGHT(8), .F_WIDTH(250)) Monster_hp_bar(
+    hpbar #(.FX(50), .FY(420), .F_HEIGHT(8), .F_WIDTH(500)) Monster_hp_bar(
     .i_clk(clk),
     .i_total_hp(monster_total_hp),
     .i_remain_hp(monster_remain_hp),
