@@ -26,7 +26,6 @@ module hpbar #(
     FY = 400 // coordinate y of bar
     )
     (
-    input wire i_clk,
     input wire [15:0] i_total_hp,
     input wire [15:0] i_remain_hp,
     output wire [15:0] o_lt_x,

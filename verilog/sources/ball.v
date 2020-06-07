@@ -18,7 +18,8 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
-
+// References
+// https://timetoexplore.net/blog/arty-fpga-vga-verilog-01
 
 module ball #(
     X_ENABLE = 0, // x-axis movement: 0 is disable, 1 is enable

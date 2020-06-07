@@ -18,7 +18,8 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
-
+// References
+// https://timetoexplore.net/blog/arty-fpga-vga-verilog-01
 
 module vga_controller(
     output h_sync,

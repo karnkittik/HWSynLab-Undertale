@@ -25,7 +25,6 @@ module cursor#(
     R = 10 // radius of cursor
     )
     (
-    input wire i_clk,
     input wire [1:0] i_cursor_position,
     output wire [15:0] o_cx,
     output wire [15:0] o_cy,

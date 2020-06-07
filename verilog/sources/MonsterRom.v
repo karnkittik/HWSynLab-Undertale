@@ -1,9 +1,28 @@
-//---------------------------------------------------
-// MonsterRom Module - Single Port ROM : Digilent Basys 3               
-// MonsterInvaders Tutorial 2 : Onboard clock 100MHz
-// VGA Resolution 640x480 @ 60Hz : Pixel Clock 25MHz
-//---------------------------------------------------
 `timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 06/05/2020 02:31:27 PM
+// Design Name: 
+// Module Name: MonsterRom
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+// References
+// https://github.com/AdrianFPGA/basys3
+// https://timetoexplore.net/blog/arty-fpga-vga-verilog-01
+// https://timetoexplore.net/blog/arty-fpga-vga-verilog-02
+// https://timetoexplore.net/blog/arty-fpga-vga-verilog-03
 
 // Setup MonsterRom Module
 module MonsterRom(
