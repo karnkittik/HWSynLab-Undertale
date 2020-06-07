@@ -164,13 +164,13 @@ module vgaSystem(
     reg [7:0] menu_t [15*40-1:0];
 
     initial begin
-        $readmemb("name.txt", name, 0, 5 * 40 - 1);
+        $readmemb("name.mem", name, 0, 5 * 40 - 1);
+        $readmemb("menu.mem", menu_t, 0, 5 * 40 - 1);
         $readmemb("font.txt", font, 0, 96 * 16 - 1);
-         $readmemb("menu.mem", menu_t, 0, 5 * 40 - 1);
     end
     
     // Home Screen
-
+    
     wire [9:0] row_h;
     wire [9:0] col_h;
     wire [9:0] y_h;
@@ -308,7 +308,7 @@ module vgaSystem(
         ( (vga_y >= - vga_x + ball_c_x + ball_c_y - ball_c_radius) 
         & (vga_y >=   vga_x - ball_c_x + ball_c_y - ball_c_radius)
         & (vga_y <= - vga_x + ball_c_x + ball_c_y + ball_c_radius)
-        & (vga_y <=   vga_x - ball_c_x + ball_c_y + ball_c_radius)) ? 4'b1010 : 4'b0000;
+        & (vga_y <=   vga_x - ball_c_x + ball_c_y + ball_c_radius)) ? 4'b1100 : 4'b0000;
     // ball g
     wire [15:0] ball_g_x;
     wire [15:0] ball_g_y;
@@ -392,8 +392,8 @@ module vgaSystem(
         & (vga_y>=lt_y_player_hp_bar) & (vga_y<=br_y_player_hp_bar)) ? 4'b1111 : 4'b0000;
 
     //monster bar
-    reg [15:0] monster_total_hp = 16'd2000;
-    reg [15:0] monster_remain_hp = 16'd2000;
+    reg [15:0] monster_total_hp = 16'd200;
+    reg [15:0] monster_remain_hp = 16'd200;
     wire [15:0] lt_x_monster_hp_bar;
     wire [15:0] lt_y_monster_hp_bar;
     wire [15:0] br_x_monster_hp_bar;
