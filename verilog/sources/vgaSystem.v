@@ -72,19 +72,19 @@ module vgaSystem(
         else cnt2 <= cnt2 + 1;
         
     // MEOW: use ppu timing instead
-//    vga_controller vga_controller
-//    (
-//        .h_sync(Hsync),
-//        .v_sync(Vsync),
-//        .x(vga_x),
-//        .y(vga_y),
-//        .end_of_line(vga_endline),
-//        .end_of_frame(vga_endframe),
-//        .clk(clk),
-//        .i_pix_stb(pix_stb),
-//        .animate(animate),
-//        .active(active)
-//    );
+    vga_controller vga_controller
+    (
+        .h_sync(Hsync),
+        .v_sync(Vsync),
+        .x(vga_x),
+        .y(vga_y),
+        .end_of_line(vga_endline),
+        .end_of_frame(vga_endframe),
+        .clk(clk),
+        .i_pix_stb(pix_stb),
+        .animate(animate),
+        .active(active)
+    );
     
     wire tx_idle;
     reg [7:0] tx_data;
@@ -166,7 +166,7 @@ module vgaSystem(
     reg [7:0] menu_t [15*40-1:0];
 
     initial begin
-        $readmemb("name.txt", name, 0, 5 * 40 - 1);
+        $readmemb("name.mem", name, 0, 5 * 40 - 1);
         $readmemb("menu.mem", menu_t, 0, 5 * 40 - 1);
         $readmemb("font.txt", font, 0, 96 * 16 - 1);
     end
@@ -393,8 +393,8 @@ module vgaSystem(
         & (vga_y>=lt_y_player_hp_bar) & (vga_y<=br_y_player_hp_bar)) ? 4'b1111 : 4'b0000;
 
     //monster bar
-    reg [15:0] monster_total_hp = 16'd200;
-    reg [15:0] monster_remain_hp = 16'd200;
+    reg [15:0] monster_total_hp = 16'd2000;
+    reg [15:0] monster_remain_hp = 16'd2000;
     wire [15:0] lt_x_monster_hp_bar;
     wire [15:0] lt_y_monster_hp_bar;
     wire [15:0] br_x_monster_hp_bar;
@@ -537,23 +537,25 @@ module vgaSystem(
     always @(posedge clk)
     begin
         case(state)
-            16'h0001: begin // cat walk state
-                reg_vgaRed <= ppured;
-                reg_vgaGreen <= ppugreen;
-                reg_vgaBlue <= ppublue;
-                if(ENTER_KEY==1) state <= 16'h001F;
-            end
+//            16'h0001: begin // cat walk state
+//                reg_vgaRed <= ppured;
+//                reg_vgaGreen <= ppugreen;
+//                reg_vgaBlue <= ppublue;
+//                if(ENTER_KEY==1) state <= 16'h001F;
+//            end
             
             16'h0000: begin // HOME SCREEN // hijacked by ppu
                 // component to render
-                reg_vgaRed <= ppured;
-                reg_vgaGreen <= ppugreen;
-                reg_vgaBlue <= ppublue;
-//                reg_vgaRed <= home;
-//                reg_vgaGreen <= home;
-//                reg_vgaBlue <= home;
-                // if ENTER, next state: MONSTER FOUND
-                if(ENTER_KEY==1) state <= 16'h0001;
+//                reg_vgaRed <= ppured;
+//                reg_vgaGreen <= ppugreen;
+//                reg_vgaBlue <= ppublue;
+                reg_vgaRed <= home;
+                reg_vgaGreen <= home;
+                reg_vgaBlue <= home;
+                // if ENTER, next state -> cat walk
+//                if(ENTER_KEY==1) state <= 16'h0001;
+                // if ENTER, next state -> face the monster
+                if(ENTER_KEY==1) state <= 16'h001F;
             end
             16'h0010: begin // FACE THE MONSTER
                 // component to render
@@ -735,7 +737,7 @@ module vgaSystem(
 //    assign heart = 
 //        (cu_h_t1 <= cu_h_t2) ? 4'b1111 : 4'b0000;
     // assign led = counter;
-    
+    /*
     reg [31:0] counter;
     
     wire [15:0] addr;
@@ -848,50 +850,51 @@ module vgaSystem(
     assign cpureset = 0;
     
     // debug init
-    /*initial cpureset = 1;
-    always @(posedge clk) if (cpureset & counter[8]) cpureset <= 0;*/
+//    initial cpureset = 1;
+//    always @(posedge clk) if (cpureset & counter[8]) cpureset <= 0;
+    */
     
 endmodule
 
-module rom(addr, data, dataeno);
+//module rom(addr, data, dataeno);
 
-    input [13:0] addr;
-    inout [7:0] data;
-    input dataeno;
+//    input [13:0] addr;
+//    inout [7:0] data;
+//    input dataeno;
     
-    reg [7:0] datao;
+//    reg [7:0] datao;
     
-    always @(addr) case (addr)
+//    always @(addr) case (addr)
     
-        `include "rom.mem" // get contents of memory
+//        `include "rom.mem" // get contents of memory
         
-        default datao = 8'b01110110; // hlt
+//        default datao = 8'b01110110; // hlt
     
-    endcase
+//    endcase
     
-    // Enable drive for data output
-    assign data = dataeno ? datao : 8'bz;
+//    // Enable drive for data output
+//    assign data = dataeno ? datao : 8'bz;
     
-endmodule
+//endmodule
 
-module ram(addr, data, select, read, write, clock);
+//module ram(addr, data, select, read, write, clock);
 
-    input [14:0] addr;
-    inout [7:0] data;
-    input select;
-    input read;
-    input write;
-    input clock;
+//    input [14:0] addr;
+//    inout [7:0] data;
+//    input select;
+//    input read;
+//    input write;
+//    input clock;
     
-    reg [7:0] ramcore [32767:0]; // The ram store
-    reg [7:0] datao;
+//    reg [7:0] ramcore [32767:0]; // The ram store
+//    reg [7:0] datao;
     
-    always @(negedge clock) begin
-        if (select & write) ramcore[addr] <= data;
-        datao <= ramcore[addr];
-    end
+//    always @(negedge clock) begin
+//        if (select & write) ramcore[addr] <= data;
+//        datao <= ramcore[addr];
+//    end
     
-    // Enable drive for data output
-    assign data = (select & read) ? datao : 8'bz;
+//    // Enable drive for data output
+//    assign data = (select & read) ? datao : 8'bz;
    
-endmodule
+//endmodule
