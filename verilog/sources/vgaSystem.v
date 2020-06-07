@@ -258,9 +258,13 @@ module vgaSystem(
     wire [20:0] sq_b_b_x = (vga_x - ball_b_x) * (vga_x - ball_b_x);
     wire [20:0] sq_b_b_y = (vga_y - ball_b_y) * (vga_y - ball_b_y);
     wire [20:0] sq_r_b = ball_b_radius * ball_b_radius;
+    // assign b_b = 
+    //     (sq_b_b_x + sq_b_b_y <= sq_r_b) ? 4'b1111 : 4'b0000;
     assign b_b = 
-        (sq_b_b_x + sq_b_b_y <= sq_r_b) ? 4'b1111 : 4'b0000;
-
+        ( (vga_y >= - vga_x + ball_b_x + ball_b_y - ball_b_radius) 
+        & (vga_y >=   vga_x - ball_b_x + ball_b_y - ball_b_radius)
+        & (vga_y <= - vga_x + ball_b_x + ball_b_y + ball_b_radius)
+        & (vga_y <=   vga_x - ball_b_x + ball_b_y + ball_b_radius)) ? 4'b1111 : 4'b0000;
      // heart
      wire [15:0] heart_x;
      wire [15:0] heart_y;
@@ -283,9 +287,17 @@ module vgaSystem(
      wire [20:0] sq_h_x = (vga_x - h_x) * (vga_x - h_x);
      wire [20:0] sq_h_y = (vga_y - h_y) * (vga_y - h_y);
      wire [20:0] sq_h_r = h_radius * h_radius;
-     assign heart = 
-         (sq_h_x + sq_h_y <= sq_h_r) ? 4'b1111 : 4'b0000;
-
+    //  assign heart = 
+    //      (sq_h_x + sq_h_y <= sq_h_r) ? 4'b1111 : 4'b0000;
+    assign heart = 
+        ( (( (vga_y >= -(2*vga_x) + h_y + (2*(h_x - h_radius))) 
+        & (vga_y >=   vga_x - h_x + h_y - (h_radius/2)) 
+        & (vga_x <= h_x))
+        | ( (vga_y >=  (2*vga_x) + h_y - (2*(h_x + h_radius))) 
+        & (vga_y >= - vga_x + h_x + h_y - (h_radius/2)) 
+        & (vga_x >= h_x)))
+        & (vga_y <= - vga_x + h_x + h_y + h_radius)
+        & (vga_y <=   vga_x - h_x + h_y + h_radius)) ? 4'b1111 : 4'b0000;
     // player bar
     reg [15:0] player_total_hp = 16'd200;
     reg [15:0] player_remain_hp = 16'd200;
