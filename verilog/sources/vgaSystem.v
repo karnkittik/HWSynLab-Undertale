@@ -346,7 +346,7 @@ module vgaSystem(
     // player bar
     reg [15:0] player_total_hp = 16'd200;
     reg [15:0] player_remain_hp = 16'd200;
-    reg [15:0] player_damage = 16'd50;
+    reg [15:0] player_damage;
     wire [15:0] lt_x_player_hp_bar;
     wire [15:0] lt_y_player_hp_bar;
     wire [15:0] br_x_player_hp_bar;
@@ -368,15 +368,15 @@ module vgaSystem(
         & (vga_y>=lt_y_player_hp_bar) & (vga_y<=br_y_player_hp_bar)) ? 4'b1111 : 4'b0000;
 
     //monster bar
-    reg [15:0] monster_total_hp = 16'd200;
-    reg [15:0] monster_remain_hp = 16'd200;
+    reg [15:0] monster_total_hp = 16'd2000;
+    reg [15:0] monster_remain_hp = 16'd2000;
     wire [15:0] lt_x_monster_hp_bar;
     wire [15:0] lt_y_monster_hp_bar;
     wire [15:0] br_x_monster_hp_bar;
     wire [15:0] br_y_monster_hp_bar;
     wire [15:0] monster_hp_bar_width;
     wire [15:0] monster_hp_bar_height;
-    hpbar #(.FX(50), .FY(420), .F_HEIGHT(8), .F_WIDTH(250)) Monster_hp_bar(
+    hpbar #(.FX(50), .FY(420), .F_HEIGHT(8), .F_WIDTH(400)) Monster_hp_bar(
     .i_clk(clk),
     .i_total_hp(monster_total_hp),
     .i_remain_hp(monster_remain_hp),
@@ -553,6 +553,11 @@ module vgaSystem(
                 
                 if(SPACE_KEY==1)
                 begin
+                    if(movingBar_x >= 305 & movingBar_x <= 325) player_damage = 16'd1000;
+                    else if(movingBar_x >= 220 & movingBar_x <= 395) player_damage = 16'd500;
+                    else if(movingBar_x >= 160 & movingBar_x <= 455) player_damage = 16'd100;
+                    else if(movingBar_x >= 115 & movingBar_x <= 500) player_damage = 16'd50;
+                    else player_damage = 16'd0;
                     if(monster_remain_hp <= player_damage) state <= 16'h0F;
                     else 
                     begin
