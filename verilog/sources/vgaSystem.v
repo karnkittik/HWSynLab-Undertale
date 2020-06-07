@@ -244,7 +244,7 @@ module vgaSystem(
     wire [15:0] ball_b_radius;
     reg [15:0] ball_b_damage = 16'd80;
     reg ball_b_rst = 0;
-    ball #(.R(7), .X_ENABLE(0), .Y_ENABLE(1), .VELOCITY(3), .C_X(20), .C_Y(10) ) ball_b(
+    ball #(.R(10), .X_ENABLE(0), .Y_ENABLE(1), .VELOCITY(3), .C_X(20), .C_Y(10) ) ball_b(
         .i_clk(clk),
         .i_ani_stb(pix_stb),
         .i_animate(animate),
@@ -257,13 +257,34 @@ module vgaSystem(
     wire [20:0] sq_b_b_x = (vga_x - ball_b_x) * (vga_x - ball_b_x);
     wire [20:0] sq_b_b_y = (vga_y - ball_b_y) * (vga_y - ball_b_y);
     wire [20:0] sq_r_b = ball_b_radius * ball_b_radius;
-    // assign b_b = 
-    //     (sq_b_b_x + sq_b_b_y <= sq_r_b) ? 4'b1111 : 4'b0000;
     assign b_b = 
-        ( (vga_y >= - vga_x + ball_b_x + ball_b_y - ball_b_radius) 
-        & (vga_y >=   vga_x - ball_b_x + ball_b_y - ball_b_radius)
-        & (vga_y <= - vga_x + ball_b_x + ball_b_y + ball_b_radius)
-        & (vga_y <=   vga_x - ball_b_x + ball_b_y + ball_b_radius)) ? 4'b1111 : 4'b0000;
+        (sq_b_b_x + sq_b_b_y <= sq_r_b) ? 4'b1111 : 4'b0000;
+    // ball c
+    wire [15:0] ball_c_x;
+    wire [15:0] ball_c_y;
+    wire [15:0] ball_c_radius;
+    reg [15:0] ball_c_damage = 16'd0;
+    reg ball_c_rst = 0;
+    ball #(.R(10), .X_ENABLE(0), .Y_ENABLE(0), .VELOCITY(3), .C_X(100), .C_Y(60) ) ball_c(
+        .i_clk(clk),
+        .i_ani_stb(pix_stb),
+        .i_animate(animate),
+        .i_rst(ball_c_rst),
+        .o_cx(ball_c_x),
+        .o_cy(ball_c_y),
+        .o_r(ball_c_radius)
+    );
+    wire [3:0] b_c;
+    wire [20:0] sq_b_c_x = (vga_x - ball_c_x) * (vga_x - ball_c_x);
+    wire [20:0] sq_b_c_y = (vga_y - ball_c_y) * (vga_y - ball_c_y);
+    wire [20:0] sq_r_c = ball_c_radius * ball_c_radius;
+    // assign b_c = 
+    //     (sq_b_b_x + sq_b_b_y <= sq_r_b) ? 4'b1111 : 4'b0000;
+    assign b_c = 
+        ( (vga_y >= - vga_x + ball_c_x + ball_c_y - ball_c_radius) 
+        & (vga_y >=   vga_x - ball_c_x + ball_c_y - ball_c_radius)
+        & (vga_y <= - vga_x + ball_c_x + ball_c_y + ball_c_radius)
+        & (vga_y <=   vga_x - ball_c_x + ball_c_y + ball_c_radius)) ? 4'b1010 : 4'b0000;
     // ball g
     wire [15:0] ball_g_x;
     wire [15:0] ball_g_y;
@@ -296,7 +317,7 @@ module vgaSystem(
      wire [15:0] h_y;
      wire [15:0] h_radius;
      reg heart_rst = 0;
-     heart #(.R(10), .X_ENABLE(1), .Y_ENABLE(1), .VELOCITY(2), .C_X(75), .C_Y(75)) Heart(
+     heart #(.R(13), .X_ENABLE(1), .Y_ENABLE(1), .VELOCITY(2), .C_X(75), .C_Y(75)) Heart(
          .i_clk(clk),
          .i_rst(heart_rst),
          .i_w_key(W_KEY),
@@ -564,19 +585,22 @@ module vgaSystem(
                 end
                 // component to render
                 reg_vgaRed <= (~ball_a_heart ? b_a : 4'b0000)  
-                | (~ball_b_heart ? b_b : 4'b0000)    
+                | (~ball_b_heart ? b_b : 4'b0000) 
+                | (b_c & ~heart)   
                 | heart 
                 | frameEscape 
                 | monster_hp_bar
                 | monsterRed;
                 reg_vgaGreen <= (~ball_a_heart ? b_a : 4'b0000)  
                 | (~ball_b_heart ? b_b : 4'b0000)  
-                | (~ball_g_heart ? b_g : 4'b0000)    
+                | (~ball_g_heart ? b_g : 4'b0000)  
+                | (b_c & ~heart)    
                 | frameEscape 
                 | player_hp_bar
                 | monsterGreen;
                 reg_vgaBlue <= (~ball_a_heart ? b_a : 4'b0000)  
                 | (~ball_b_heart ? b_b : 4'b0000) 
+                | (b_c & ~heart)  
                 | frameEscape
                 | monsterBlue;
                 
@@ -633,6 +657,7 @@ module vgaSystem(
                 ball_g_heart <= 0;
                 ball_a_rst <= 1;
                 ball_b_rst <= 1;
+                ball_c_rst <= 1;
                 ball_g_rst <= 1;
                 heart_rst <= 1;
                 //////////////
@@ -642,6 +667,7 @@ module vgaSystem(
                 //end reset
                 ball_a_rst <= 0;
                 ball_b_rst <= 0;
+                ball_c_rst <= 0;
                 ball_g_rst <= 0;
                 heart_rst <= 0;
                 //////////////
