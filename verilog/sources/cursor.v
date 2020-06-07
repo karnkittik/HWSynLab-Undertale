@@ -36,7 +36,7 @@ module cursor#(
     assign position[0] = 16'd65; //fight
     assign position[1] = 16'd205; //action
     assign position[2] = 16'd335; //item
-    assign position[3] = 16'd490; //mercy
+    assign position[3] = 16'd480; //mercy
     
     assign o_cy = MY;
     assign o_cr = R;
